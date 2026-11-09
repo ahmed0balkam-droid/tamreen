@@ -57,6 +57,30 @@ function getState(req) {
   return personalize_(base_(), req.device, isAdmin_(req.pin));
 }
 
+// photo of a player: the organizer, or the phone that registered that player
+function setPhoto(req) {
+  return write_(req, function (admin) {
+    const pid = String(req.player_id || '');
+    const p = rows_('players').filter(function (x) { return x.id === pid; })[0];
+    if (!p) throw new Error('اللاعب غير موجود.');
+    if (!admin) {
+      const mine = !!req.device && rows_('regs').some(function (r) { return r.player_id === pid && r.device === String(req.device); });
+      if (!mine) throw new Error('تقدر تغيّر صورتك أنت بس (من الجوال اللي سجّلت منه)، أو المنظّم.');
+    }
+    if (req.remove) {
+      deleteWhere_('settings', function (x) { return x.key === 'photo_' + pid; });
+      TX.photo = { pid: pid, remove: true };
+      return 'تم حذف صورة ' + p.name + '.';
+    }
+    const b64 = String(req.data || '');
+    if (!/^\/9j\//.test(b64)) throw new Error('الصورة لازم تكون JPEG.');
+    if (b64.length > 400000) throw new Error('الصورة كبيرة، جرّب صورة ثانية.');
+    setSetting_('photo_' + pid, String(Date.now()));
+    TX.photo = { pid: pid, data: b64 };
+    return 'تم حفظ صورة ' + p.name + ' ✅';
+  });
+}
+
 function checkPin(req) {
   const ok = isAdmin_(req && req.pin, true);
   if (!ok) throw new Error('رمز المنظّم غير صحيح.');
@@ -473,8 +497,11 @@ function buildBase_() {
   const out = {
     now: now, builtAt: now, appUrl: appUrl_(), session: null, list: [], teams: null, bib: [], match: null,
     stats: { rank: [], commit: [] }, history: [],
-    roster: players.map(function (p) { return p.name; }).sort(function (a, b) { return a.localeCompare(b, 'ar'); })
+    roster: players.map(function (p) { return p.name; }).sort(function (a, b) { return a.localeCompare(b, 'ar'); }),
+    photos: {}
   };
+  // player photos: {player_id: version}; the picture itself is served by GET ?photo=<id>&v=<version>
+  rows_('settings').forEach(function (s) { if (s.key.indexOf('photo_') === 0 && s.value) out.photos[s.key.slice(6)] = s.value; });
   if (!sessions.length) return out;
   const S = latestSession_(sessions);
   const allRegs = rows_('regs');
@@ -664,6 +691,8 @@ function personalize_(b, device, admin) {
     out.history.forEach(function (h) { if (h.sid === out.session.id) { h.mvpTally = []; h.defTally = []; } });
     if (out.match) { out.match.mvpTally = []; out.match.defTally = []; }
   }
+  // players this phone has ever registered (they may change their own photo)
+  out.myPlayers = device ? Object.keys((TX.tables.regs || []).reduce(function (m, r) { if (r.device === device) m[r.player_id] = 1; return m; }, {})) : [];
   out.list.forEach(function (r) {
     r.mine = !!device && r.device === device;
     if (r.mine) { r.friend = out.myCount > 0; out.myCount++; }

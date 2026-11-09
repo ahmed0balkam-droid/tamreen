@@ -80,6 +80,12 @@ async function runCall(tx, createCore, fn, arg) {
     try {
       const out = core.api[fn](arg || {});
       if (TX.writing || READ_ONLY.indexOf(fn) < 0) await flush(q, snap, TX.tables);
+      if (TX.photo) {                                    // picture bytes live in their own table, never loaded with the state
+        if (TX.photo.remove) await q('delete from photos where player_id = $1', [TX.photo.pid]);
+        else await q(`insert into photos (player_id, mime, data, updated_at) values ($1, 'image/jpeg', decode($2, 'base64'), $3)
+                      on conflict (player_id) do update set mime = excluded.mime, data = excluded.data, updated_at = excluded.updated_at`,
+                     [TX.photo.pid, TX.photo.data, String(Date.now())]);
+      }
       return { out };
     } catch (e) {
       // a failed action changes nothing, except the wrong-PIN counter
@@ -133,4 +139,9 @@ async function importSheets(tx, csv) {
   });
 }
 
-if (typeof module !== 'undefined') module.exports = { TABLES, loadAll, flush, diff, snapshot, runCall, loadSql, parseCsv, sheetsToTables, importSheets };
+async function getPhoto(q, pid) {
+  const r = await q("select mime, encode(data, 'base64') as b64 from photos where player_id = $1", [String(pid || '')]);
+  return r[0] || null;
+}
+
+if (typeof module !== 'undefined') module.exports = { TABLES, loadAll, flush, diff, snapshot, runCall, loadSql, parseCsv, sheetsToTables, importSheets, getPhoto };

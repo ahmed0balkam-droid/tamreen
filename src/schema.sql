@@ -84,6 +84,14 @@ create table if not exists votes (
 );
 create index if not exists votes_session on votes (session_id);
 
+-- player photos (small JPEG, ~20 KB each); served by the api function, not part of the app state
+create table if not exists photos (
+  player_id  text primary key,
+  mime       text not null default 'image/jpeg',
+  data       bytea not null,
+  updated_at bigint
+);
+
 alter table settings      enable row level security;
 alter table sessions      enable row level security;
 alter table players       enable row level security;
@@ -92,3 +100,4 @@ alter table bib_draws     enable row level security;
 alter table matches       enable row level security;
 alter table match_players enable row level security;
 alter table votes         enable row level security;
+alter table photos        enable row level security;

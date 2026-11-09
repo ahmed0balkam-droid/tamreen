@@ -17,6 +17,12 @@ async function start(port, opts = {}) {
   const srv = http.createServer(async (req, res) => {
     const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
     if (req.method === 'OPTIONS') { res.writeHead(200, cors); return res.end('ok'); }
+    if (req.method === 'GET' && /[?&]photo=/.test(req.url)) {
+      const pid = new URL(req.url, 'http://x').searchParams.get('photo');
+      const ph = await tx((q) => require('../src/db.js').getPhoto(q, pid));
+      if (!ph) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': ph.mime, 'Cache-Control': 'public, max-age=31536000' }); return res.end(Buffer.from(ph.b64, 'base64'));
+    }
     if (req.method === 'GET' && opts.static) {           // serve the PWA files too
       const f = path.join(opts.static, decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html');
       if (fs.existsSync(f) && fs.statSync(f).isFile()) {

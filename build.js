@@ -34,6 +34,15 @@ const API = new Set(${JSON.stringify(api.filter((n) => n !== 'setup'))});
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  if (req.method === "GET") {
+    // player photo: GET ?photo=<player_id>&v=<version>  (version in the URL, so it can be cached for a year)
+    const pid = new URL(req.url).searchParams.get("photo");
+    if (!pid) return json({ ok: true, app: "tamreen" });
+    const ph = await tx((q) => getPhoto(q, pid)).catch(() => null);
+    if (!ph) return new Response("not found", { status: 404, headers: CORS });
+    const bin = Uint8Array.from(atob(ph.b64), (c) => c.charCodeAt(0));
+    return new Response(bin, { headers: { ...CORS, "Content-Type": ph.mime, "Cache-Control": "public, max-age=31536000, immutable" } });
+  }
   if (req.method !== "POST") return json({ ok: true, app: "tamreen" });
   let body: any;
   try { body = await req.json(); } catch { return json({ error: "طلب غير صالح." }, 400); }
