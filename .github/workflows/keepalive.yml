@@ -8,4 +8,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: |
-          curl -fsS -X POST "${{ vars.API_URL }}" -H 'content-type: application/json' -d '{"fn":"getState","arg":{}}' -o /dev/null -w "%{http_code}\n"
+          curl -fsS -X POST "https://gvgnkejorsyytcvacvhl.supabase.co/functions/v1/api" -H 'content-type: application/json' -d '{"fn":"getState","arg":{}}' -o /dev/null -w "%{http_code}\n"
