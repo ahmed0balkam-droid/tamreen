@@ -1097,8 +1097,11 @@ function drawStats(){
     var rl=el("div","recs");
     RECORDS.forEach(function(r){var R=A.records[r.id];if(!R.best)return;var row=el("div","rec");row.appendChild(el("i",null,r.icon));
       var t=el("div","t");t.appendChild(el("small",null,r.name));var b=el("b");
-      R.holders.forEach(function(h,i){if(i)b.appendChild(document.createTextNode(" و "));b.appendChild(h.pid?plink(h.name,h.pid):document.createTextNode(h.name))});
-      t.appendChild(b);t.appendChild(el("small",null,R.holders.map(function(h){return h.month?monthLabel(h.month):fmtDate(h.date)}).join(" · ")));row.appendChild(t);
+      var hs=R.holders.length>3?R.holders.slice(0,2):R.holders;
+      hs.forEach(function(h,i){if(i)b.appendChild(document.createTextNode(" و "));b.appendChild(h.pid?plink(h.name,h.pid):document.createTextNode(h.name))});
+      if(R.holders.length>3)b.appendChild(document.createTextNode(" و"+(R.holders.length-2)+" آخرين"));
+      var dts=[];R.holders.forEach(function(h){var d=h.month?monthLabel(h.month):fmtDate(h.date);if(dts.indexOf(d)<0)dts.push(d)});
+      t.appendChild(b);t.appendChild(el("small",null,dts.slice(0,3).join(" · ")+(dts.length>3?" …":"")));row.appendChild(t);
       row.appendChild(el("span","v",String(R.best)));rl.appendChild(row)});
     body.appendChild(rl);
     body.appendChild(el("p","note","لما أحد يكسر رقم قياسي يظهر «🚨 رقم قياسي جديد» في نتيجة الأسبوع والتقرير."));
@@ -1457,7 +1460,7 @@ function assistsText(){
 }
 function recordsText(){
   var A=achievements(),L="━━━━━━━━━━━━━━",o=["*📜 الأرقام القياسية — تمرين السبت*",L];
-  RECORDS.forEach(function(r){var R=A.records[r.id];if(!R.best)return;o.push(r.icon+" *"+r.name+":* "+R.best+" — "+R.holders.map(function(h){return h.name}).join(" و "))});
+  RECORDS.forEach(function(r){var R=A.records[r.id];if(!R.best)return;o.push(r.icon+" *"+r.name+":* "+R.best+" — "+(R.holders.length>3?R.holders.slice(0,2).map(function(h){return h.name}).join(" و ")+" و"+(R.holders.length-2)+" آخرين":R.holders.map(function(h){return h.name}).join(" و ")))});
   if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
   return o.join("\n");
 }
