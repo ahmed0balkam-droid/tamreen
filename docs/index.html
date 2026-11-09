@@ -1054,6 +1054,10 @@ function drawPotm(){
       r.appendChild(el("span","pp",ptsWord(x.pts)));l.appendChild(r)});body.appendChild(l)}
   body.appendChild(el("p","note","لاعب الشهر = أكثر لاعب جمع نقاط في مباريات الشهر (نفس نقاط الترتيب). عند التساوي: الأكثر فوزاً، ثم الأهداف، ثم الصناعة."));
   copyBtnTo(body,"📋 نسخ لاعب الشهر",potmText,"potmMsg");
+  var pb=el("button","btn primary","📸 صورة لاعب الشهر");pb.type="button";pb.style.marginTop="10px";var pbox=el("div"),pm=el("p","msg");pm.id="potmImgMsg";
+  pb.addEventListener("click",function(){buildStatsImage({key:"potm",title:"🏅 لاعب الشهر",sub:"أبطال الأشهر",hl:3,wide:2,noMedals:true,foot:"لاعب الشهر = أكثر نقاط في مباريات الشهر",cols:["","اللاعب","الشهر","النقاط"],
+    rows:P.map(function(m){var w=m.winners[0];return {pid:w.player_id,name:w.name,cells:[m.final?"🏆":"🔥",m.winners.map(function(x){return x.name}).join(" و "),m.label+(m.final?"":" (جاري)"),fp(w.pts)]}})},pbox,"potmImgMsg")});
+  body.appendChild(pb);body.appendChild(pbox);body.appendChild(pm);
 }
 function potmText(){
   var P=S.potm||[],L="━━━━━━━━━━━━━━",o=["*🏅 لاعب الشهر — تمرين السبت*",L];
@@ -1079,12 +1083,16 @@ function drawStats(){
     body.appendChild(table(["#","اللاعب","لعب","ف","ت","خ","⚽","🎯","⭐","🛡️","نقاط"],r.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},s.p,s.w,s.d,s.l,s.goals,s.assists||0,s.mvp||0,s.def||0,{v:fp(s.pts),cls:"pts"}]})));
     body.appendChild(el("p","note","ف فوز · ت تعادل · خ خسارة · ⚽ أهداف · 🎯 صناعة. النقاط: الفوز 3، التعادل 1، ⚽ كل هدف 1، 🎯 كل صناعة ½، ⭐ أفضل لاعب +3، 🛡️ أفضل مدافع +2."));
     copyBtn(body,"📋 نسخ الترتيب",rankText);
+    statsImgBtn(body,function(){return {key:"rank",title:"ترتيب الموسم",sub:"الترتيب",hl:10,cols:["#","اللاعب","لعب","ف","ت","خ","⚽","🎯","⭐","🛡️","نقاط"],
+      rows:S.stats.rank.map(function(s,i){return {pid:s.player_id,name:s.name,cells:[i+1,s.name,s.p,s.w,s.d,s.l,s.goals,s.assists||0,s.mvp||0,s.def||0,fp(s.pts)]}})}});
   } else if(tab==="scorers"){
     var sc=S.stats.scorers||[];
     if(!sc.length){body.appendChild(el("p","note","تظهر قائمة الهدافين بعد تسجيل أهداف أول مباراة."));return}
     body.appendChild(table(["#","اللاعب","أهداف","صناعة","⭐","🛡️","لعب"],sc.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},{v:s.goals,cls:"pts"},s.assists,s.mvp,s.def,s.p]})));
     body.appendChild(el("p","note","⭐ مرات الفوز بأفضل لاعب · 🛡️ مرات الفوز بأفضل مدافع (بالتصويت أو اختيار المنظّم)."));
     copyBtn(body,"📋 نسخ الهدافين",scorersText);
+    statsImgBtn(body,function(){return {key:"scorers",title:"هدّافين الموسم",sub:"الهدافين",hl:2,foot:"⚽ أهداف · 🎯 صناعة · ⭐ أفضل لاعب · 🛡️ أفضل مدافع",cols:["#","اللاعب","⚽","🎯","⭐","🛡️","لعب"],
+      rows:(S.stats.scorers||[]).map(function(s,i){return {pid:s.player_id,name:s.name,cells:[i+1,s.name,s.goals,s.assists,s.mvp,s.def,s.p]}})}});
   } else if(tab==="assists"){
     var as=(S.stats.scorers||[]).filter(function(s){return s.assists>0}).slice()
       .sort(function(a,b){return b.assists-a.assists||b.goals-a.goals||a.p-b.p||a.name.localeCompare(b.name,"ar")});
@@ -1092,6 +1100,8 @@ function drawStats(){
     body.appendChild(table(["#","اللاعب","صناعة","أهداف","مساهمات","لعب","صناعة/م"],as.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},{v:s.assists,cls:"pts"},s.goals,s.goals+s.assists,s.p,(s.assists/Math.max(1,s.p)).toFixed(1)]})));
     body.appendChild(el("p","note","🎯 الصناعة = التمريرة الحاسمة اللي جاب منها زميله الهدف. المساهمات = أهداف + صناعة."));
     copyBtn(body,"📋 نسخ صنّاع الأهداف",assistsText);
+    statsImgBtn(body,function(){return {key:"assists",title:"صنّاع الأهداف",sub:"الصناعة",hl:2,foot:"🎯 صناعة = التمريرة الحاسمة · المساهمات = أهداف + صناعة",cols:["#","اللاعب","🎯","⚽","مساهمات","لعب"],
+      rows:as.map(function(s,i){return {pid:s.player_id,name:s.name,cells:[i+1,s.name,s.assists,s.goals,s.goals+s.assists,s.p]}})}});
   } else if(tab==="wins"){
     var wn=(S.stats.winners||[]).filter(function(x){return x.p>0});
     if(!wn.length){body.appendChild(el("p","note","تظهر الانتصارات بعد تسجيل نتيجة أول مباراة."));return}
@@ -1102,6 +1112,8 @@ function drawStats(){
     body.appendChild(table(["#","اللاعب","فوز","تعادل","خسارة","لعب","نسبة الفوز"],wn.map(function(x,i){return [i+1,{v:x.name,pid:x.player_id},{v:x.w,cls:"pts"},x.d,x.l,x.p,x.rate+"٪"]})));
     body.appendChild(el("p","note","الترتيب حسب عدد الانتصارات، وعند التساوي نسبة الفوز."));
     copyBtn(body,"📋 نسخ الانتصارات",winsText);
+    statsImgBtn(body,function(){return {key:"wins",title:"الأكثر فوزاً",sub:"الانتصارات",hl:2,foot:"الترتيب حسب عدد الانتصارات، وعند التساوي نسبة الفوز",cols:["#","اللاعب","فوز","تعادل","خسارة","لعب","النسبة"],
+      rows:wn.map(function(s,i){return {pid:s.player_id,name:s.name,cells:[i+1,s.name,s.w,s.d,s.l,s.p,s.rate+"%"]}})}});
   } else if(tab==="month"){
     var ms=S.months||[];
     if(!ms.length){body.appendChild(el("p","note","تظهر جوائز الشهر بعد تسجيل نتيجة أول مباراة."));return}
@@ -1124,6 +1136,13 @@ function drawStats(){
       body.appendChild(table(["#","اللاعب","لعب","ف","⚽","🎯","⭐","🛡️","نقاط"],M.table.map(function(x,i){return [i+1,{v:x.name,pid:x.player_id},x.p,x.w,x.goals,x.assists,x.mvp,x.def,{v:fp(x.pts),cls:"pts"}]})))}
     if(M.scorers.length){body.appendChild(el("h3","sec","هدافين "+M.label));
       body.appendChild(table(["#","اللاعب","أهداف","صناعة","لعب"],M.scorers.map(function(x,i){return [i+1,x.name,{v:x.goals,cls:"pts"},x.assists,x.p]})))}
+    statsImgBtn(body,function(){var aw=[];
+        if(M.potm&&M.potm.length)aw.push(["🏅 لاعب الشهر",M.potm.map(function(x){return x.name}).join(" و ")+" · "+ptsWord(M.potm[0].pts)]);
+        if(M.goals)aw.push(["⚽ هداف الشهر",shortNames(M.goals.names)+" · "+M.goals.n]);
+        if(M.assists)aw.push(["🎯 أفضل صانع",shortNames(M.assists.names)+" · "+M.assists.n]);
+        if(M.wins)aw.push(["🏆 الأكثر فوزاً",shortNames(M.wins.names)+" · "+M.wins.n]);
+        return {key:"month-"+M.key,title:"جوائز "+M.label,sub:"جوائز الشهر",hl:8,matches:M.matches,cols:["#","اللاعب","لعب","ف","⚽","🎯","⭐","🛡️","نقاط"],extra:aw,
+          rows:(M.table||[]).map(function(x,i){return {pid:x.player_id,name:x.name,cells:[i+1,x.name,x.p,x.w,x.goals,x.assists,x.mvp,x.def,fp(x.pts)]}})}});
     var cb=el("button","btn ghost","نسخ جوائز الشهر للواتساب");cb.type="button";cb.style.width="100%";cb.style.marginTop="12px";
     cb.addEventListener("click",function(){copyStr(monthText(M),"monMsg")});body.appendChild(cb);
     var mm=el("p","msg");mm.id="monMsg";mm.setAttribute("role","status");body.appendChild(mm);
@@ -1142,11 +1161,17 @@ function drawStats(){
     body.appendChild(rl);
     body.appendChild(el("p","note","لما أحد يكسر رقم قياسي يظهر «🚨 رقم قياسي جديد» في نتيجة الأسبوع والتقرير."));
     copyBtn(body,"📋 نسخ الأرقام القياسية",recordsText);
+    statsImgBtn(body,function(){var rows=[];RECORDS.forEach(function(r){var R=A.records[r.id];if(!R.best)return;
+        var who=R.holders.length>2?R.holders[0].name+" و"+(R.holders.length-1)+" آخرين":R.holders.map(function(h){return h.name}).join(" و ");
+        rows.push({name:r.name,cells:[r.icon,r.name,who,R.best]})});
+      return {key:"records",title:"الأرقام القياسية",sub:"سجل الأرقام",hl:3,wide:2,noMedals:true,noAvatar:true,foot:"اكسر رقم وتنعلن في تقرير الأسبوع 🚨",cols:["","الرقم","صاحبه","القيمة"],rows:rows}});
   } else if(tab==="commit"){
     var c=S.stats.commit;
     if(!c.length){body.appendChild(el("p","note","يظهر سجل الالتزام بعد أول مباراة أو أول انسحاب متأخر."));return}
     body.appendChild(table(["#","اللاعب","لعب","انسحاب متأخر","غياب","الالتزام"],c.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},s.p,s.late,s.ns,{v:s.rate+"٪",cls:"pts"}]})));
     body.appendChild(el("p","note","الالتزام = المباريات اللي لعبها ÷ (المباريات + الانسحابات المتأخرة + الغياب)."));
+    statsImgBtn(body,function(){return {key:"commit",title:"الالتزام",sub:"الحضور",hl:5,foot:"الالتزام = لعب ÷ (لعب + انسحاب متأخر + غياب)",cols:["#","اللاعب","لعب","انسحاب متأخر","غياب","الالتزام"],
+      rows:c.map(function(s,i){return {pid:s.player_id,name:s.name,cells:[i+1,s.name,s.p,s.late,s.ns,s.rate+"%"]}})}});
   } else {
     if(!S.history.length){body.appendChild(el("p","note","لا توجد مباريات مسجّلة بعد."));return}
     body.appendChild(el("p","note","كل أسبوع محفوظ هنا. اضغط «عرض التفاصيل» عشان تشوف الفريقين وأهداف كل لاعب، وتنسخ التقرير أو تطلع صورة النتيجة."));
@@ -1185,7 +1210,7 @@ function cardData(pid){
   d.rank=ri+1;d.pts=ri>=0?rk[ri].pts:0;d.total=rk.length;
   return d;
 }
-function initials(n){var p=String(n||"").trim().split(/\s+/);return (p[0]?p[0][0]:"")+(p[1]?p[1][0]:"")}
+function initials(n){var p=String(n||"").trim().split(/\s+/),f=function(w){return w&&w.length>3&&w.indexOf("ال")===0?w[2]:(w?w[0]:"")};return f(p[0])+f(p[1])}
 var cardFrom=null;
 function openCard(pid,from){
   closeCard();cardFrom=from||null;
@@ -1342,6 +1367,70 @@ function eventLines(sid){
             return order.map(function(l){var n=g[l];return "🎖️ "+l+": "+(n.length>4?n.slice(0,3).join("، ")+" و"+(n.length-3)+" آخرين":n.join("، "))})})()};
 }
 
+
+
+/* ---------- season stats as a shareable image (one builder for every table) ---------- */
+// spec: {key,title,sub,cols:[header...] (first two are # and name), rows:[{pid,name,cells:[...]}], hl:index of highlighted column, extra:[[label,value]...]}
+var statImgs={};
+function statsImgBtn(body,specFn){
+  var spec0=specFn();if(!spec0)return;
+  var box=el("div");box.className="statimg";
+  var b=el("button","btn primary","📸 صورة للقروب");b.type="button";b.style.marginTop="10px";
+  var m=el("p","msg");m.id="statImgMsg";m.setAttribute("role","status");
+  b.addEventListener("click",function(){buildStatsImage(specFn(),box,"statImgMsg")});
+  body.appendChild(b);body.appendChild(box);body.appendChild(m);
+  var c=statImgs[spec0.key];if(c&&c.built===S.builtAt)showStatImg(c,box);   // keep the preview across refreshes
+}
+function showStatImg(c,box){box.textContent="";var im=el("img","preview");im.src=c.url;im.alt=c.title;box.appendChild(im);box.appendChild(imageActions(c.blob,c.blobUrl,c.name,c.title,"statImgMsg"))}
+function buildStatsImage(spec,box,msgId){
+  msg(msgId,"جاري تجهيز الصورة…");
+  var rows=spec.rows.slice(0,20);
+  var fonts=document.fonts?Promise.all(['900 80px "Cairo"','700 30px "Cairo"','800 40px "Barlow Condensed"'].map(function(f){return document.fonts.load(f)})).catch(function(){}):Promise.resolve();
+  var PH={};var loads=rows.filter(function(r){return r.pid}).map(function(r){return loadImg(S.photos&&S.photos[r.pid]?photoUrl(r.pid):null).then(function(im){PH[r.pid]=im})});
+  Promise.all([fonts].concat(loads)).then(function(){
+    var W=1080,rowH=84,top=330,extraH=(spec.extra||[]).length?(spec.extra.length*74+30):0,Hh=top+86+rows.length*rowH+extraH+(spec.rows.length>rows.length?50:0)+130;
+    var c=document.createElement("canvas");c.width=W;c.height=Hh;var x=c.getContext("2d");
+    var bg=x.createLinearGradient(0,0,0,Hh);bg.addColorStop(0,"#1f3a66");bg.addColorStop(.35,"#14213d");bg.addColorStop(1,"#0f1a31");x.fillStyle=bg;x.fillRect(0,0,W,Hh);
+    var band=x.createLinearGradient(0,0,W,260);band.addColorStop(0,"#8fd0f5");band.addColorStop(1,"#5fb2e6");x.fillStyle=band;rr(x,40,40,W-80,230,36);x.fill();
+    x.save();x.beginPath();rr(x,40,40,W-80,230,36);x.clip();x.strokeStyle="rgba(255,255,255,.2)";x.lineWidth=34;x.beginPath();x.arc(150,40,150,0,Math.PI*2);x.stroke();x.restore();
+    x.direction="rtl";x.textAlign="right";x.fillStyle="#14213d";x.font='800 30px "Cairo",sans-serif';x.fillText("تمرين السبت ⚽ · "+(spec.sub||""),W-90,105);
+    x.fillStyle="#ffffff";x.font='900 72px "Cairo",sans-serif';x.fillText(fit(x,spec.title,W-200),W-90,200);
+    var nm=spec.matches!=null?spec.matches:S.history.length;
+    x.fillStyle="#14213d";x.font='700 26px "Cairo",sans-serif';x.fillText(nm+(nm===1?" مباراة":nm===2?" مباراتين":" مباريات")+" · حتى "+fmtDate(S.history[0]?S.history[0].date:S.session.date),W-90,245);
+    // columns: # | photo+name | numbers...
+    // widths: # = 80, name = the rest, value columns ≤110 each (one may be "wide" for text, e.g. record names)
+    var big=spec.wide||spec.hl,n=spec.cols.length-2,ww=[],wideW=spec.wide?300:(spec.hl?96:0),numW=Math.min(110,Math.floor((W-80-80-360-wideW)/Math.max(1,n-(big?1:0))));
+    for(var q=2;q<spec.cols.length;q++)ww[q]=q===big?wideW:numW;
+    var nameW=W-80-80-ww.slice(2).reduce(function(a,b){return a+b},0),X0=W-40;
+    function colW(i){return i>=2?ww[i]:nameW}
+    function colX(i){if(i===0)return X0-40;if(i===1)return X0-80;var r=X0-80-nameW;for(var q=2;q<i;q++)r-=ww[q];return r-ww[i]/2}
+    var hy=top+50;x.fillStyle="rgba(143,208,245,.14)";rr(x,40,top,W-80,72,18);x.fill();
+    spec.cols.forEach(function(h,i){x.fillStyle=i===spec.hl?"#8fd0f5":"#b7c6e4";x.font='800 '+(String(h).length>4?22:28)+'px "Cairo",sans-serif';
+      x.textAlign=i===1?"right":"center";x.fillText(i===1?h:fit(x,String(h),colW(i)-6),i===1?colX(1)-(spec.noAvatar?0:70):colX(i),hy)});
+    var medal=["#ffd23f","#d6dde8","#e0a36b"];
+    rows.forEach(function(r,k){var y=top+86+k*rowH;
+      x.fillStyle=k%2?"rgba(255,255,255,.035)":"rgba(255,255,255,.07)";rr(x,40,y,W-80,rowH-10,16);x.fill();
+      var cy=y+(rowH-10)/2;
+      if(k<3&&!spec.noMedals){x.fillStyle=medal[k];x.beginPath();x.arc(colX(0),cy,24,0,Math.PI*2);x.fill();x.fillStyle="#14213d"}else x.fillStyle="#b7c6e4";
+      x.textAlign="center";x.direction="ltr";x.font='800 30px "Barlow Condensed","Cairo",sans-serif';x.fillText(String(r.cells[0]),colX(0),cy+10);x.direction="rtl";
+      var av=!spec.noAvatar;if(av)drawAvatar(x,r.pid?PH[r.pid]:null,r.name,colX(1)-28,cy,26,"#8fd0f5");x.direction="rtl";
+      x.textAlign="right";x.fillStyle="#ffffff";x.font='800 '+(spec.noAvatar?26:30)+'px "Cairo",sans-serif';x.fillText(fit(x,String(r.cells[1]),nameW-(av?90:30)),colX(1)-(av?70:0),cy+11);
+      r.cells.slice(2).forEach(function(v,j){var i=j+2;x.textAlign="center";x.fillStyle=i===spec.hl?"#8fd0f5":"#e6eef8";
+        var t=String(v);x.direction=/^[\d.٪%–\- ]+$/.test(t)?"ltr":"rtl";x.font=(i===spec.hl?'800 38px ':'700 32px ')+'"Barlow Condensed","Cairo",sans-serif';if(x.direction==="rtl")x.font='700 24px "Cairo",sans-serif';
+        x.fillText(fit(x,t,colW(i)-8),colX(i),cy+11);x.direction="rtl"})});
+    var ey=top+86+rows.length*rowH+(spec.rows.length>rows.length?50:0);
+    if(spec.rows.length>rows.length){x.textAlign="center";x.fillStyle="#b7c6e4";x.font='700 24px "Cairo",sans-serif';x.fillText("+ "+(spec.rows.length-rows.length)+" لاعبين آخرين في التطبيق",W/2,ey-14)}
+    (spec.extra||[]).forEach(function(e,k){var y=ey+20+k*74;x.fillStyle="rgba(143,208,245,.12)";rr(x,40,y,W-80,60,16);x.fill();
+      x.textAlign="right";x.fillStyle="#8fd0f5";x.font='800 26px "Cairo",sans-serif';x.fillText(e[0],W-70,y+40);
+      x.textAlign="left";x.fillStyle="#ffffff";x.font='800 26px "Cairo",sans-serif';x.fillText(fit(x,e[1],W-480),70,y+40)});
+    x.textAlign="center";x.fillStyle="#b7c6e4";x.font='700 24px "Cairo",sans-serif';x.fillText(spec.foot||"النقاط: فوز 3 · تعادل 1 · هدف 1 · صناعة ½ · أفضل لاعب 3 · أفضل مدافع 2",W/2,Hh-80);
+    x.fillStyle="#8fd0f5";x.direction="ltr";x.font='700 22px "Barlow Condensed","Cairo",sans-serif';x.fillText((S.appUrl||location.href).replace(/^https?:\/\//,""),W/2,Hh-44);x.direction="rtl";
+    var url=c.toDataURL("image/png");
+    c.toBlob(function(bl){var rec={built:S.builtAt,url:url,blob:bl,blobUrl:URL.createObjectURL(bl),name:spec.title+".png",title:spec.title};
+      var old=statImgs[spec.key];if(old&&old.blobUrl)try{URL.revokeObjectURL(old.blobUrl)}catch(e){}
+      statImgs[spec.key]=rec;showStatImg(rec,box);msg(msgId,"الصورة جاهزة: «مشاركة أو حفظ» وأرسلها للقروب.","ok")});
+  }).catch(function(){msg(msgId,"ما قدرنا نجهز الصورة، حاول مرة ثانية.","err")});
+}
 
 /* ---------- shareable player card image (1080×1350, story/WhatsApp friendly) ---------- */
 function loadImg(src){return new Promise(function(res){if(!src)return res(null);var im=new Image();im.crossOrigin="anonymous";im.onload=function(){res(im)};im.onerror=function(){res(null)};im.src=src})}
