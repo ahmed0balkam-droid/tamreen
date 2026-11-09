@@ -46,6 +46,7 @@ const ist = (ms) => { const d = new Date(ms + 3 * 3600e3); return { date: d.toIS
   await (await p.$('#statsBody')).screenshot({ path: path.join(__dirname, 'shots/records.png') });
   // card with badges + share image
   await p.click('#tabRank'); await p.locator('#statsBody .plink', { hasText: 'أحمد' }).first().click(); await p.waitForSelector('.pcard');
+  assert.ok(!(await p.textContent('.pcard .phead')).includes('ما لعب'), 'no "never played" text for a player with games');
   console.log('badges:', (await p.$$eval('.pcard .badge:not(.off) b', (x) => x.map((e) => e.textContent))).join(' | '));
   await (await p.$('.pcard')).screenshot({ path: path.join(__dirname, 'shots/card_badges.png') });
   await p.click('text=🃏 شارك الكرت كصورة'); await p.waitForSelector('.pcard .hpic', { timeout: 15000 });
