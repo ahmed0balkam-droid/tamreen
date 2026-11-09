@@ -33,6 +33,7 @@ const fontCss = [
     const pg = await ctxB.newPage();
     pg.on('pageerror', e => errors.push(String(e)));
     pg.on('console', m => { if (m.type() === 'error' && !/ERR_|Failed to load/.test(m.text())) errors.push(m.text()); });
+    await pg.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.TAMREEN_CONFIG={api:"/api"};' }));  // local server, not production
     await pg.route('**/fonts.googleapis.com/**', (r) => r.fulfill({ contentType: 'text/css', body: fontCss }));
     await pg.route('**/__fonts/**', (r) => r.fulfill({ path: path.join(F, decodeURIComponent(new URL(r.request().url()).pathname.replace('/__fonts/', ''))) }));
     await pg.goto('http://localhost:' + PORT + '/');

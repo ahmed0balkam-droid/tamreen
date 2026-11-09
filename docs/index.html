@@ -380,6 +380,7 @@ details.rules ul{margin:10px 0 0;padding:0 1.1em 0 0;line-height:1.9;font-size:.
     <div class="tabs" role="tablist">
       <button type="button" role="tab" id="tabRank" aria-selected="true">الترتيب</button>
       <button type="button" role="tab" id="tabScorers" aria-selected="false">الهدافين</button>
+      <button type="button" role="tab" id="tabAssists" aria-selected="false">صناعة الأهداف</button>
       <button type="button" role="tab" id="tabWins" aria-selected="false">الانتصارات</button>
       <button type="button" role="tab" id="tabMonth" aria-selected="false">جوائز الشهر</button>
       <button type="button" role="tab" id="tabMatches" aria-selected="false">الأسابيع السابقة</button>
@@ -967,8 +968,8 @@ function drawStats(){
     var r=S.stats.rank;
     if(!r.length){body.appendChild(el("p","note","يبدأ الترتيب بعد تسجيل نتيجة أول مباراة."));return}
     body.appendChild(el("p","note","👆 اضغط على اسم أي لاعب عشان تشوف بطاقته."));
-    body.appendChild(table(["#","اللاعب","لعب","ف","ت","خ","⚽","⭐","🛡️","نقاط"],r.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},s.p,s.w,s.d,s.l,s.goals,s.mvp||0,s.def||0,{v:s.pts,cls:"pts"}]})));
-    body.appendChild(el("p","note","ف فوز · ت تعادل · خ خسارة. النقاط: الفوز 3، التعادل 1، ⭐ أفضل لاعب +2، 🛡️ أفضل مدافع +2."));
+    body.appendChild(table(["#","اللاعب","لعب","ف","ت","خ","⚽","🎯","⭐","🛡️","نقاط"],r.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},s.p,s.w,s.d,s.l,s.goals,s.assists||0,s.mvp||0,s.def||0,{v:s.pts,cls:"pts"}]})));
+    body.appendChild(el("p","note","ف فوز · ت تعادل · خ خسارة · ⚽ أهداف · 🎯 صناعة. النقاط: الفوز 3، التعادل 1، ⭐ أفضل لاعب +2، 🛡️ أفضل مدافع +2."));
     copyBtn(body,"📋 نسخ الترتيب",rankText);
   } else if(tab==="scorers"){
     var sc=S.stats.scorers||[];
@@ -976,6 +977,13 @@ function drawStats(){
     body.appendChild(table(["#","اللاعب","أهداف","صناعة","⭐","🛡️","لعب"],sc.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},{v:s.goals,cls:"pts"},s.assists,s.mvp,s.def,s.p]})));
     body.appendChild(el("p","note","⭐ مرات الفوز بأفضل لاعب · 🛡️ مرات الفوز بأفضل مدافع (بالتصويت أو اختيار المنظّم)."));
     copyBtn(body,"📋 نسخ الهدافين",scorersText);
+  } else if(tab==="assists"){
+    var as=(S.stats.scorers||[]).filter(function(s){return s.assists>0}).slice()
+      .sort(function(a,b){return b.assists-a.assists||b.goals-a.goals||a.p-b.p||a.name.localeCompare(b.name,"ar")});
+    if(!as.length){body.appendChild(el("p","note","تظهر قائمة صنّاع الأهداف بعد تسجيل أول تمريرة حاسمة."));return}
+    body.appendChild(table(["#","اللاعب","صناعة","أهداف","مساهمات","لعب","صناعة/م"],as.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},{v:s.assists,cls:"pts"},s.goals,s.goals+s.assists,s.p,(s.assists/Math.max(1,s.p)).toFixed(1)]})));
+    body.appendChild(el("p","note","🎯 الصناعة = التمريرة الحاسمة اللي جاب منها زميله الهدف. المساهمات = أهداف + صناعة."));
+    copyBtn(body,"📋 نسخ صنّاع الأهداف",assistsText);
   } else if(tab==="wins"){
     var wn=(S.stats.winners||[]).filter(function(x){return x.p>0});
     if(!wn.length){body.appendChild(el("p","note","تظهر الانتصارات بعد تسجيل نتيجة أول مباراة."));return}
@@ -1138,7 +1146,7 @@ function rankText(){
   var o=seasonHead("🏆 ترتيب لاعبين تمرين السبت");
   o.push("النقاط: فوز 3 · تعادل 1 · ⭐ +2 · 🛡️ +2","");
   S.stats.rank.forEach(function(s,i){
-    var ex=[];if(s.goals)ex.push("⚽"+s.goals);if(s.mvp)ex.push("⭐"+s.mvp);if(s.def)ex.push("🛡️"+s.def);
+    var ex=[];if(s.goals)ex.push("⚽"+s.goals);if(s.assists)ex.push("🎯"+s.assists);if(s.mvp)ex.push("⭐"+s.mvp);if(s.def)ex.push("🛡️"+s.def);
     o.push((i+1)+"- "+s.name+": *"+s.pts+"* "+(s.pts===1?"نقطة":"نقاط")+" (ف"+s.w+" ت"+s.d+" خ"+s.l+")"+(ex.length?" "+ex.join(" "):""))});
   if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
   return o.join("\n");
@@ -1146,6 +1154,13 @@ function rankText(){
 function scorersText(){
   var o=seasonHead("⚽ هدافين تمرين السبت");
   (S.stats.scorers||[]).forEach(function(s,i){var x=[];if(s.goals)x.push(s.goals+" ⚽");if(s.assists)x.push(s.assists+" 🎯");o.push((i+1)+"- "+s.name+": "+x.join(" · "))});
+  if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
+  return o.join("\n");
+}
+function assistsText(){
+  var o=seasonHead("🎯 صنّاع الأهداف في تمرين السبت");
+  (S.stats.scorers||[]).filter(function(s){return s.assists>0}).slice().sort(function(a,b){return b.assists-a.assists||b.goals-a.goals||a.name.localeCompare(b.name,"ar")})
+    .forEach(function(s,i){o.push((i+1)+"- "+s.name+": "+s.assists+" 🎯"+(s.goals?" · "+s.goals+" ⚽":""))});
   if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
   return o.join("\n");
 }
@@ -1415,7 +1430,7 @@ $("saveResult").addEventListener("click",function(){
 $("copyBtn").addEventListener("click",copyText);
 $("imgBtn").addEventListener("click",buildImage);
 $("imgShare").addEventListener("click",shareImage);
-[["tabRank","rank"],["tabScorers","scorers"],["tabWins","wins"],["tabMonth","month"],["tabMatches","matches"],["tabCommit","commit"]].forEach(function(p){$(p[0]).addEventListener("click",function(){tab=p[1];drawStats()})});
+[["tabRank","rank"],["tabScorers","scorers"],["tabAssists","assists"],["tabWins","wins"],["tabMonth","month"],["tabMatches","matches"],["tabCommit","commit"]].forEach(function(p){$(p[0]).addEventListener("click",function(){tab=p[1];drawStats()})});
 $("adminTop").addEventListener("click",function(){
   if(S&&S.isAdmin){$("orgCard").scrollIntoView({behavior:"smooth",block:"start"});return}
   $("adminForm").hidden=false;$("adminForm").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(function(){$("pin").focus()},350)});

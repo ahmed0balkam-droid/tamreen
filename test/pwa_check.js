@@ -7,6 +7,7 @@ const { start } = require('./pgserver');
   const b = await chromium.launch();
   const c = await b.newContext({ ...devices['iPhone 13'] });
   const p = await c.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.route('**/config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: 'window.TAMREEN_CONFIG={api:"/api"};' }));  // local server, not production
   await p.goto('http://localhost:8791/'); await p.waitForSelector('#app:not([hidden])');
   console.log('install hint:', await p.textContent('#installBox'));
   await p.screenshot({ path: path.join(__dirname, 'shots/pwa_iphone.png') });
