@@ -5,7 +5,7 @@ const { chromium } = require('playwright');
 const { start } = require('./pgserver');
 const PORT = 8790;
 
-const F = path.join(__dirname, '../../fonts/node_modules/@fontsource');
+const F = process.env.FONTS || path.join(__dirname, '../node_modules/@fontsource');
 const fontCss = [
   ...['500','700','800'].flatMap(w => ['arabic','latin'].map(sub => `@font-face{font-family:Tajawal;font-weight:${w};src:url(/__fonts/tajawal/files/tajawal-${sub}-${w}-normal.woff2)}`)),
   ...['500','700'].map(w => `@font-face{font-family:"El Messiri";font-weight:${w};src:url(/__fonts/el-messiri/files/el-messiri-arabic-${w}-normal.woff2)}`),
