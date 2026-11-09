@@ -350,6 +350,19 @@ ok('wrong PIN is refused and attempts are rate-limited', () => {
   cache.delete('pinfail');
   assert.ok(G.checkPin({ pin }).state.isAdmin);
 });
+ok('player of the month: monthly points add up to the season table; winner = top points', () => {
+  const st = G.getState({ pin });
+  assert.ok(st.months.length >= 1 && Array.isArray(st.potm));
+  const sum = {};
+  st.months.forEach((m) => {
+    m.table.forEach((x) => { sum[x.player_id] = (sum[x.player_id] || 0) + x.pts; });
+    for (let i = 1; i < m.table.length; i++) assert.ok(m.table[i - 1].pts >= m.table[i].pts);
+    if (m.potm.length) { assert.strictEqual(m.potm[0].pts, m.table[0].pts); assert.ok(m.potm.every((w) => w.pts === m.table[0].pts)); }
+  });
+  st.stats.rank.forEach((r) => assert.ok(Math.abs((sum[r.player_id] || 0) - r.pts) < 1e-9, r.name));
+  const cur = st.months[0]; assert.strictEqual(cur.final, false);
+  assert.strictEqual(st.potm.length, st.months.filter((m) => m.potm.length).length);
+});
 // (doGet removed: the page is now a static PWA)
 console.log(`\n${passed} checks passed`);
 module.exports = { pin };

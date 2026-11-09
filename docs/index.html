@@ -194,6 +194,19 @@ button.vc{cursor:pointer}button.vc:focus-visible{outline:2px solid var(--gold);o
 .vbar .track{grid-column:1/-1;height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:-4px}
 .vbar .track i{display:block;height:100%;background:var(--gold);border-radius:99px}
 .vbar em{font-style:normal;text-align:left;font-family:var(--f-num);color:var(--gold)}
+.av{flex:none;width:64px;height:64px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 25%,#ff9a52,#c94a00);border:3px solid #ffd23f;color:#111;font:800 1.5rem/1 var(--f-display);overflow:hidden}
+.av img{width:100%;height:100%;object-fit:cover}
+.av.sm{width:42px;height:42px;font-size:1rem;border-width:2px}
+.potm-hero{display:flex;gap:14px;align-items:center;padding:14px;border-radius:16px;border:1px solid rgba(255,210,63,.55);background:linear-gradient(135deg,rgba(255,210,63,.15),rgba(255,106,19,.06))}
+.potm-hero .tx{min-width:0;display:flex;flex-direction:column;gap:3px}
+.potm-hero small{color:var(--muted);font-weight:700;font-size:.8rem}
+.potm-hero b{font:800 1.25rem/1.3 var(--f-display);overflow-wrap:anywhere}
+.potm-hero .pp{font:700 1.05rem/1.2 var(--f-num);color:var(--gold)}
+.potm-hero .ln{font-size:.8rem;color:var(--muted)}
+.potm-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.04)}
+.potm-row .nm{display:flex;flex-direction:column;gap:2px;min-width:0}.potm-row .nm small{color:var(--muted);font-size:.75rem;font-weight:700}
+.potm-row .nm b{overflow-wrap:anywhere}.potm-row .pp{font:700 1rem/1 var(--f-num);color:var(--gold);white-space:nowrap}
+.potm-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .awards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0}
 .award{border:1px solid var(--oline);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:4px;min-width:0;background:rgba(255,106,19,.05)}
 .award small{font-size:.75rem;color:var(--muted);font-weight:700}
@@ -374,6 +387,11 @@ details.rules ul{margin:10px 0 0;padding:0 1.1em 0 0;line-height:1.9;font-size:.
       <button class="btn primary" id="imgShare" type="button" hidden>📤 مشاركة أو حفظ</button>
       <a class="btn ghost" id="imgDl" download="tashkila.png" href="#" target="_blank" rel="noopener">⬇️ تحميل الصورة</a>
     </div>
+  </section>
+
+  <section class="card" id="potmSec" hidden aria-label="لاعب الشهر">
+    <h2>🏅 لاعب الشهر</h2>
+    <div id="potmBody"></div>
   </section>
 
   <section class="card" aria-label="إحصائيات الموسم">
@@ -582,6 +600,7 @@ function render(){
   drawTeams(mains,locked);
   drawBib();
   drawResult();
+  drawPotm();
   drawStats();
   $("waBtn").href="https://wa.me/?text="+encodeURIComponent(waText());
 
@@ -956,6 +975,45 @@ function finalizeBox(m){
 }
 function nextWeekDate(){var d=new Date(S.session.date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+7);return d.toISOString().slice(0,10)}
 
+/* ---------- player of the month (standalone section) ---------- */
+function avatarEl(pid,name,small){var a=el("div","av"+(small?" sm":""));
+  if(S.photos&&S.photos[pid]){var im=el("img");im.alt="";im.src=photoUrl(pid);im.onerror=function(){a.textContent=initials(name)};a.appendChild(im)}else a.textContent=initials(name);return a}
+function potmLine(x){var o=["ف"+x.w];if(x.goals)o.push("⚽"+x.goals);if(x.assists)o.push("🎯"+x.assists);if(x.mvp)o.push("⭐"+x.mvp);if(x.def)o.push("🛡️"+x.def);return o.join(" · ")+" · "+x.p+(x.p===1?" مباراة":" مباريات")}
+function namesLinks(list){var s=el("b");list.forEach(function(x,i){if(i)s.appendChild(document.createTextNode(" و "));s.appendChild(plink(x.name,x.player_id))});return s}
+function drawPotm(){
+  var sec=$("potmSec"),body=$("potmBody"),P=S.potm||[];
+  sec.hidden=!P.length;body.textContent="";if(!P.length)return;
+  var cur=P[0],past=P.filter(function(m){return m.final});
+  // hero: the race this month, or last month's champion
+  var hero=el("div","potm-hero"),w=cur.winners[0];
+  hero.appendChild(avatarEl(w.player_id,w.name));
+  var tx=el("div","tx");
+  tx.appendChild(el("small",null,cur.final?"🏆 لاعب "+cur.label:"🔥 متصدر "+cur.label+" · يُحسم بنهاية الشهر"));
+  tx.appendChild(namesLinks(cur.winners));
+  tx.appendChild(el("span","pp",ptsWord(w.pts)));
+  tx.appendChild(el("span","ln",potmLine(w)));
+  hero.appendChild(tx);body.appendChild(hero);
+  if(!cur.final&&cur.runnersUp.length){var rl=el("div","potm-list");
+    cur.runnersUp.forEach(function(x,i){var r=el("div","potm-row");r.appendChild(avatarEl(x.player_id,x.name,true));
+      var nm=el("div","nm");nm.appendChild(el("small",null,"المركز "+(cur.winners.length+i+1)));var b=el("b");b.appendChild(plink(x.name,x.player_id));nm.appendChild(b);r.appendChild(nm);
+      r.appendChild(el("span","pp",fp(x.pts)));rl.appendChild(r)});body.appendChild(rl)}
+  var hof=past.filter(function(m){return m!==cur});
+  if(hof.length){body.appendChild(el("h3","sec","🏆 أبطال الأشهر الماضية"));
+    var l=el("div","potm-list");
+    hof.forEach(function(m){var x=m.winners[0],r=el("div","potm-row");r.appendChild(avatarEl(x.player_id,x.name,true));
+      var nm=el("div","nm");nm.appendChild(el("small",null,m.label));nm.appendChild(namesLinks(m.winners));r.appendChild(nm);
+      r.appendChild(el("span","pp",ptsWord(x.pts)));l.appendChild(r)});body.appendChild(l)}
+  body.appendChild(el("p","note","لاعب الشهر = أكثر لاعب جمع نقاط في مباريات الشهر (نفس نقاط الترتيب). عند التساوي: الأكثر فوزاً، ثم الأهداف، ثم الصناعة."));
+  copyBtnTo(body,"📋 نسخ لاعب الشهر",potmText,"potmMsg");
+}
+function potmText(){
+  var P=S.potm||[],L="━━━━━━━━━━━━━━",o=["*🏅 لاعب الشهر — تمرين السبت*",L];
+  P.forEach(function(m){var w=m.winners[0];
+    o.push((m.final?"🏆 ":"🔥 ")+"*"+m.label+"*"+(m.final?"":" (المتصدر حالياً)")+": "+m.winners.map(function(x){return x.name}).join(" و ")+" — "+ptsWord(w.pts));
+    o.push("   "+potmLine(w))});
+  if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
+  return o.join("\n");
+}
 function drawStats(){
   ["rank","scorers","wins","month","matches","commit"].forEach(function(k){$("tab"+k[0].toUpperCase()+k.slice(1)).setAttribute("aria-selected",String(tab===k))});
   var body=$("statsBody");body.textContent="";
@@ -1005,11 +1063,16 @@ function drawStats(){
     sel.addEventListener("change",function(){monthSel=this.value;drawStats()});body.appendChild(sel);
     var M=ms.filter(function(x){return x.key===monthSel})[0];
     var aw=el("div","awards");
+    if(M.potm&&M.potm.length){var pc=el("div","award");pc.style.gridColumn="1 / -1";pc.style.borderColor="rgba(255,210,63,.6)";
+      pc.appendChild(el("small",null,M.final?"🏅 لاعب الشهر":"🏅 لاعب الشهر (المتصدر حالياً)"));
+      pc.appendChild(el("b",null,shortNames(M.potm.map(function(x){return x.name}))));pc.appendChild(el("span",null,ptsWord(M.potm[0].pts)));aw.appendChild(pc)}
     [["⚽ هداف الشهر",M.goals,function(n){return n+(n===1?" هدف":" أهداف")}],["🎯 أفضل صانع",M.assists,function(n){return n+(n===1?" صناعة":" صناعات")}],
      ["⭐ أفضل لاعب",M.mvp,function(n){return "فاز بالتصويت "+n+(n===1?" مرة":" مرات")}],["🛡️ أفضل مدافع",M.def,function(n){return "فاز بالتصويت "+n+(n===1?" مرة":" مرات")}],
      ["🏆 الأكثر فوزاً",M.wins,function(n){return n+(n===1?" انتصار":" انتصارات")}]].forEach(function(a){
       var c=el("div","award");c.appendChild(el("small",null,a[0]));c.appendChild(el("b",null,a[1]?shortNames(a[1].names):"—"));if(a[1])c.appendChild(el("span",null,a[2](a[1].n)));aw.appendChild(c)});
     body.appendChild(aw);
+    if(M.table&&M.table.length){body.appendChild(el("h3","sec","نقاط "+M.label));
+      body.appendChild(table(["#","اللاعب","لعب","ف","⚽","🎯","⭐","🛡️","نقاط"],M.table.map(function(x,i){return [i+1,{v:x.name,pid:x.player_id},x.p,x.w,x.goals,x.assists,x.mvp,x.def,{v:fp(x.pts),cls:"pts"}]})))}
     if(M.scorers.length){body.appendChild(el("h3","sec","هدافين "+M.label));
       body.appendChild(table(["#","اللاعب","أهداف","صناعة","لعب"],M.scorers.map(function(x,i){return [i+1,x.name,{v:x.goals,cls:"pts"},x.assists,x.p]})))}
     var cb=el("button","btn ghost","نسخ جوائز الشهر للواتساب");cb.type="button";cb.style.width="100%";cb.style.marginTop="12px";
@@ -1074,6 +1137,8 @@ function openCard(pid,from){
   hd.appendChild(av);
   var tx=el("div");tx.style.minWidth="0";tx.appendChild(el("h3",null,name));
   if(d.rank)tx.appendChild(el("div","prank","🏆 المركز "+d.rank+" من "+d.total+" · "+ptsWord(d.pts)));
+  var titles=(S.potm||[]).filter(function(m){return m.final&&m.winners.some(function(x){return x.player_id===pid})});
+  if(titles.length){var tt=el("div","prank","🏅 لاعب الشهر ×"+titles.length+" · "+titles.map(function(m){return m.label}).join("، "));tt.style.background="rgba(255,210,63,.16)";tt.style.marginInlineStart="0";tx.appendChild(tt)}
   else tx.appendChild(el("small",null,"ما لعب أي مباراة مسجّلة بعد"));
   hd.appendChild(tx);c.appendChild(hd);
   if(S.isAdmin||(S.myPlayers||[]).indexOf(pid)>=0)c.appendChild(photoTools(pid,name));
@@ -1172,6 +1237,13 @@ function winLeader(){var w=(S.stats.winners||[]).filter(function(x){return x.w>0
   var t=w.filter(function(x){return x.w===w[0].w&&x.rate===w[0].rate}),tail="فاز "+cnt(w[0].w,"مرة","مرتين","مرات","مرة")+" من "+cnt(w[0].p,"مباراة","مباراتين","مباريات","مباراة");
   if(t.length>3)return t.length+" لاعبين متساوين، كل واحد "+tail;
   return t.map(function(x){return x.name}).join(" و")+" — "+tail}
+function copyBtnTo(body,label,fn,msgId){
+  var row=el("div","row");row.style.marginTop="12px";
+  var b=el("button","btn ghost",label);b.type="button";b.addEventListener("click",function(){copyStr(fn(),msgId)});
+  var wa=el("a","btn wa","💬 واتساب");wa.target="_blank";wa.rel="noopener";wa.href="https://wa.me/?text="+encodeURIComponent(fn());
+  row.appendChild(b);row.appendChild(wa);body.appendChild(row);
+  var m=el("p","msg");m.id=msgId;m.setAttribute("role","status");body.appendChild(m);
+}
 function copyBtn(body,label,fn){
   var row=el("div","row");row.style.marginTop="12px";
   var b=el("button","btn ghost",label);b.type="button";b.addEventListener("click",function(){copyStr(fn(),"statMsg")});
@@ -1225,6 +1297,7 @@ function reportText(hm){
 }
 function monthText(M){
   var L="━━━━━━━━━━━━━━",o=["*🏅 جوائز "+M.label+"*","("+M.matches+(M.matches===1?" مباراة)":" مباريات)"),L];
+  if(M.potm&&M.potm.length)o.push("🏅 *لاعب الشهر"+(M.final?"":" (المتصدر حالياً)")+":* "+M.potm.map(function(x){return x.name}).join(" و ")+" — "+ptsWord(M.potm[0].pts));
   function line(icon,t,a,u){o.push(icon+" *"+t+":* "+(a?shortNames(a.names)+" — "+u(a.n):"—"))}
   line("⚽","هداف الشهر",M.goals,function(n){return n+(n===1?" هدف":" أهداف")});
   line("🎯","أفضل صانع",M.assists,function(n){return n+(n===1?" صناعة":" صناعات")});

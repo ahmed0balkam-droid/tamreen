@@ -606,7 +606,7 @@ function buildBase_() {
     if (!months[key]) months[key] = { key: key, label: MONTHS_AR[Number(key.slice(5, 7)) - 1] + ' ' + key.slice(0, 4), matches: 0, pl: {} };
     return months[key];
   }
-  function mp(m, pid) { if (!m.pl[pid]) m.pl[pid] = { player_id: pid, name: nameOf(pid), goals: 0, assists: 0, mvp: 0, def: 0, mvpVotes: 0, defVotes: 0, p: 0, w: 0 }; return m.pl[pid]; }
+  function mp(m, pid) { if (!m.pl[pid]) m.pl[pid] = { player_id: pid, name: nameOf(pid), goals: 0, assists: 0, mvp: 0, def: 0, mvpVotes: 0, defVotes: 0, p: 0, w: 0, d: 0, l: 0 }; return m.pl[pid]; }
   matches.forEach(function (m) {
     const sa = Number(m.sa), sb = Number(m.sb);
     const ra = sa > sb ? 'w' : sa < sb ? 'l' : 'd';
@@ -617,7 +617,7 @@ function buildBase_() {
     rows.forEach(function (x) {
       const res = x.team === 'A' ? ra : rb;
       const s = g(x.player_id); s.p++; s[res]++; s.goals += Number(x.goals) || 0; s.assists += Number(x.assists) || 0;
-      const q = mp(M, x.player_id); q.p++; if (res === 'w') q.w++; q.goals += Number(x.goals) || 0; q.assists += Number(x.assists) || 0;
+      const q = mp(M, x.player_id); q.p++; q[res]++; q.goals += Number(x.goals) || 0; q.assists += Number(x.assists) || 0;
     });
     const sb2 = bibs.filter(function (b) { return b.session_id === m.session_id; })
       .sort(function (a, b) { return Number(a.at) - Number(b.at); });
@@ -651,15 +651,22 @@ function buildBase_() {
     if (m.session_id === S.id) out.match = h;
   });
   // monthly awards
+  const thisMonth = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd').slice(0, 7);
   out.months = Object.keys(months).sort().reverse().map(function (k) {
     const M = months[k], pl = Object.keys(M.pl).map(function (id) { return M.pl[id]; });
+    // player of the month = most points that month (same points as the season table)
+    const table = pl.map(function (x) {
+      return { player_id: x.player_id, name: x.name, pts: points_(x), p: x.p, w: x.w, d: x.d, l: x.l, goals: x.goals, assists: x.assists, mvp: x.mvp, def: x.def };
+    }).sort(rankCmp_);
+    const t0 = table[0];
+    const potm = t0 && t0.pts > 0 ? table.filter(function (x) { return x.pts === t0.pts && x.w === t0.w && x.goals === t0.goals && x.assists === t0.assists; }) : [];
     const best = function (field, tie) {
       const top = pl.filter(function (x) { return x[field] > 0; }).sort(function (a, b) { return b[field] - a[field] || (tie ? b[tie] - a[tie] : 0); });
       if (!top.length) return null;
       const lead = top.filter(function (x) { return x[field] === top[0][field] && (!tie || x[tie] === top[0][tie]); });
       return { names: lead.map(function (x) { return x.name; }), n: top[0][field] };
     };
-    return { key: k, label: M.label, matches: M.matches,
+    return { key: k, label: M.label, matches: M.matches, final: k < thisMonth, table: table, potm: potm,
       goals: best('goals', 'assists'), assists: best('assists', 'goals'), mvp: best('mvp', 'mvpVotes'), def: best('def', 'defVotes'), wins: best('w'),
       scorers: pl.filter(function (x) { return x.goals + x.assists > 0; })
         .sort(function (a, b) { return b.goals - a.goals || b.assists - a.assists || a.name.localeCompare(b.name, 'ar'); })
@@ -677,10 +684,12 @@ function buildBase_() {
   });
   const all = Object.keys(st).map(function (k) { return st[k]; });
   out.stats.rank = all.filter(function (s) { return s.p > 0; })
-    // points: win 3, draw 1, each weekly best player +2, each weekly best defender +2
-    // points: win 3, draw 1, goal 1, assist 0.5, weekly best player +3, weekly best defender +2
-    .map(function (s) { return Object.assign({ pts: s.w * 3 + s.d + s.goals + s.assists * 0.5 + (s.mvp || 0) * 3 + (s.def || 0) * 2 }, s); })
-    .sort(function (a, b) { return b.pts - a.pts || b.w - a.w || b.goals - a.goals || b.p - a.p || a.name.localeCompare(b.name, 'ar'); });
+    .map(function (s) { return Object.assign({ pts: points_(s) }, s); })
+    .sort(rankCmp_);
+  // player of the month: every finished month's winner (newest first) + who leads the current month
+  out.potm = out.months.filter(function (m) { return m.potm.length; }).map(function (m) {
+    return { key: m.key, label: m.label, final: m.final, matches: m.matches, winners: m.potm, runnersUp: m.table.filter(function (x) { return m.potm.indexOf(x) < 0; }).slice(0, 2) };
+  });
   out.stats.winners = all.filter(function (s) { return s.p > 0; })
     .map(function (s) { return { player_id: s.player_id, name: s.name, p: s.p, w: s.w, d: s.d, l: s.l, rate: Math.round(s.w / s.p * 100) }; })
     .sort(function (a, b) { return b.w - a.w || b.rate - a.rate || a.name.localeCompare(b.name, 'ar'); });
@@ -691,6 +700,10 @@ function buildBase_() {
     .sort(function (a, b) { return b.rate - a.rate || b.p - a.p || a.name.localeCompare(b.name, 'ar'); });
   return out;
 }
+
+// points: win 3, draw 1, goal 1, assist 0.5, weekly best player +3, weekly best defender +2
+function points_(s) { return s.w * 3 + (s.d || 0) + (s.goals || 0) + (s.assists || 0) * 0.5 + (s.mvp || 0) * 3 + (s.def || 0) * 2; }
+function rankCmp_(a, b) { return b.pts - a.pts || b.w - a.w || b.goals - a.goals || b.assists - a.assists || b.p - a.p || a.name.localeCompare(b.name, 'ar'); }
 
 function personalize_(b, device, admin) {
   const out = JSON.parse(JSON.stringify(b));
