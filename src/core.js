@@ -662,8 +662,8 @@ function buildBase_() {
   const all = Object.keys(st).map(function (k) { return st[k]; });
   out.stats.rank = all.filter(function (s) { return s.p > 0; })
     // points: win 3, draw 1, each weekly best player +2, each weekly best defender +2
-    // points: win 3, draw 1, goal 1, assist 0.5, weekly best player +2, weekly best defender +2
-    .map(function (s) { return Object.assign({ pts: s.w * 3 + s.d + s.goals + s.assists * 0.5 + (s.mvp || 0) * 2 + (s.def || 0) * 2 }, s); })
+    // points: win 3, draw 1, goal 1, assist 0.5, weekly best player +3, weekly best defender +2
+    .map(function (s) { return Object.assign({ pts: s.w * 3 + s.d + s.goals + s.assists * 0.5 + (s.mvp || 0) * 3 + (s.def || 0) * 2 }, s); })
     .sort(function (a, b) { return b.pts - a.pts || b.w - a.w || b.goals - a.goals || b.p - a.p || a.name.localeCompare(b.name, 'ar'); });
   out.stats.winners = all.filter(function (s) { return s.p > 0; })
     .map(function (s) { return { player_id: s.player_id, name: s.name, p: s.p, w: s.w, d: s.d, l: s.l, rate: Math.round(s.w / s.p * 100) }; })
