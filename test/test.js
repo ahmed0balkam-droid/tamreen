@@ -208,11 +208,11 @@ ok('result saves with scorers; standings and history update', () => {
   assert.strictEqual(r.state.match.sa, 5);
   assert.strictEqual(r.state.match.scorers[0].name, a0.name);
   const top = r.state.stats.rank[0];
-  assert.strictEqual(top.pts, 3); assert.strictEqual(r.state.stats.rank.length, 14);
+  assert.strictEqual(top.pts, 3 + 3); assert.strictEqual(r.state.stats.rank.length, 14);   // win 3 + 3 goals
   // update result overwrites, no duplicates
   const r2 = G.adminSaveResult({ pin, sa: 4, sb: 4, goals: {} });
   assert.strictEqual(r2.state.history.length, 1);
-  assert.ok(r2.state.stats.rank.every(s => s.d === 1 && s.pts === 1));
+  assert.ok(r2.state.stats.rank.every(s => s.d === 1 && s.pts === 1));                     // draw, no goals
   const ad = r2.state.stats.commit.find(s => s.name === 'عدنان');
   assert.strictEqual(ad.ns, 1); assert.strictEqual(ad.rate, 0);
 });
@@ -268,8 +268,9 @@ ok('organizer pick overrides the vote for best defender, and can be cleared', ()
   r = G.adminPickAward({ pin, category: 'def', player_id: pick });               // keep pick for month test
   // awards add +2 to the ranking points
   const rk = r.state.stats.rank, me = rk.find(s => s.player_id === pick || s.name === r.state.match.def[0].name);
-  assert.strictEqual(me.def, 1); assert.strictEqual(me.pts, me.w * 3 + me.d + 2);
-  assert.ok(rk.every(s => s.pts === s.w * 3 + s.d + 2 * (s.mvp || 0) + 2 * (s.def || 0)));
+  assert.strictEqual(me.def, 1); assert.strictEqual(me.pts, me.w * 3 + me.d + me.goals + me.assists * 0.5 + 2);
+  assert.ok(rk.every(s => s.pts === s.w * 3 + s.d + s.goals + s.assists * 0.5 + 2 * (s.mvp || 0) + 2 * (s.def || 0)));
+  assert.ok(rk.some(s => s.assists) ? rk.every(s => Number.isInteger(s.pts * 2)) : true, 'points are whole or half');
   for (let i = 1; i < rk.length; i++) assert.ok(rk[i - 1].pts >= rk[i].pts, 'rank sorted by points');
 });
 ok('monthly awards: top scorer, assister, best player, best defender', () => {

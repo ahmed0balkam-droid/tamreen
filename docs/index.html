@@ -446,7 +446,7 @@ details.rules ul{margin:10px 0 0;padding:0 1.1em 0 0;line-height:1.9;font-size:.
       <li>انسحاب الأساسي خلال 24 ساعة قبل التمرين ينحسب «انسحاباً متأخراً»، والغياب بدون عذر ينحسب «غياباً».</li>
       <li>عند اكتمال 14 لاعب أو عند القفل يتوزع الأساسيون على فريقين متساويين بموازنة المراكز، ولاعبو «أي مركز» يكمّلون النقص. التوزيع نفسه عند الجميع.</li>
       <li>قرعة السديري: رقم عشوائي من 00 إلى 99. من 00 إلى 49 يلبس الفريق A، ومن 50 إلى 99 يلبس الفريق B، وكل محاولة تنحفظ في السجل.</li>
-      <li>الترتيب: الفوز 3 نقاط، التعادل نقطة، الخسارة صفر، وكل مرة يفوز اللاعب بأفضل لاعب أو أفضل مدافع +2.</li>
+      <li>الترتيب: الفوز 3 نقاط، التعادل نقطة، الخسارة صفر، كل هدف نقطة، كل صناعة نص نقطة، وكل مرة يفوز اللاعب بأفضل لاعب أو أفضل مدافع +2.</li>
       <li>بعد المباراة يصوّت اللي لعبوا لأفضل لاعب وأفضل مدافع، صوت واحد لكل جوال، وتقدر تغيّر صوتك لين يبدأ الأسبوع الجاي. وإذا اختار المنظّم بنفسه، يكون اختياره هو المعتمد.</li>
       <li>المنظّم يقدر يعدّل أي شي عند الحاجة: ترتيب القائمة، التوزيع، السديري، النتيجة، والتصويت.</li>
       <li>جوائز الشهر: الهداف (أكثر أهداف)، أفضل صانع (أكثر صناعة)، أفضل لاعب وأفضل مدافع (أكثر مرات فوز بالتصويت الأسبوعي).</li>
@@ -968,8 +968,8 @@ function drawStats(){
     var r=S.stats.rank;
     if(!r.length){body.appendChild(el("p","note","يبدأ الترتيب بعد تسجيل نتيجة أول مباراة."));return}
     body.appendChild(el("p","note","👆 اضغط على اسم أي لاعب عشان تشوف بطاقته."));
-    body.appendChild(table(["#","اللاعب","لعب","ف","ت","خ","⚽","🎯","⭐","🛡️","نقاط"],r.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},s.p,s.w,s.d,s.l,s.goals,s.assists||0,s.mvp||0,s.def||0,{v:s.pts,cls:"pts"}]})));
-    body.appendChild(el("p","note","ف فوز · ت تعادل · خ خسارة · ⚽ أهداف · 🎯 صناعة. النقاط: الفوز 3، التعادل 1، ⭐ أفضل لاعب +2، 🛡️ أفضل مدافع +2."));
+    body.appendChild(table(["#","اللاعب","لعب","ف","ت","خ","⚽","🎯","⭐","🛡️","نقاط"],r.map(function(s,i){return [i+1,{v:s.name,pid:s.player_id},s.p,s.w,s.d,s.l,s.goals,s.assists||0,s.mvp||0,s.def||0,{v:fp(s.pts),cls:"pts"}]})));
+    body.appendChild(el("p","note","ف فوز · ت تعادل · خ خسارة · ⚽ أهداف · 🎯 صناعة. النقاط: الفوز 3، التعادل 1، ⚽ كل هدف 1، 🎯 كل صناعة ½، ⭐ أفضل لاعب +2، 🛡️ أفضل مدافع +2."));
     copyBtn(body,"📋 نسخ الترتيب",rankText);
   } else if(tab==="scorers"){
     var sc=S.stats.scorers||[];
@@ -1069,7 +1069,7 @@ function openCard(pid,from){
   var x=el("button","x","✕");x.type="button";x.setAttribute("aria-label","إغلاق");x.addEventListener("click",closeCard);c.appendChild(x);
   var hd=el("div","phead"),av=el("div","pava");av.textContent=initials(name);hd.appendChild(av);   // photo goes here later
   var tx=el("div");tx.style.minWidth="0";tx.appendChild(el("h3",null,name));
-  if(d.rank)tx.appendChild(el("div","prank","🏆 المركز "+d.rank+" من "+d.total+" · "+d.pts+(d.pts===1?" نقطة":" نقاط")));
+  if(d.rank)tx.appendChild(el("div","prank","🏆 المركز "+d.rank+" من "+d.total+" · "+ptsWord(d.pts)));
   else tx.appendChild(el("small",null,"ما لعب أي مباراة مسجّلة بعد"));
   hd.appendChild(tx);c.appendChild(hd);
   if(d.n){
@@ -1077,7 +1077,7 @@ function openCard(pid,from){
     var tl=el("div","ptiles");
     [[d.n,"مباريات"],[d.w,"فوز"],[d.dr,"تعادل"],[d.l,"خسارة"],
      [rate+"٪","نسبة الفوز",1],[d.goals,"أهداف",1],[d.assists,"صناعة"],[(d.goals/d.n).toFixed(1),"هدف/مباراة"],
-     [d.mvp,"⭐ أفضل لاعب",1],[d.def,"🛡️ أفضل مدافع",1],[(d.ga/d.n).toFixed(1),"دخل عليهم/مباراة"],[d.pts,"نقاط",1]]
+     [d.mvp,"⭐ أفضل لاعب",1],[d.def,"🛡️ أفضل مدافع",1],[(d.ga/d.n).toFixed(1),"دخل عليهم/مباراة"],[fp(d.pts),"نقاط",1]]
       .forEach(function(t){var b=el("div",t[2]?"hi":null);var v=el("b",null,String(t[0]));b.appendChild(v);b.appendChild(el("span",null,t[1]));tl.appendChild(b)});
     c.appendChild(tl);
     c.appendChild(el("h4",null,"آخر "+Math.min(5,d.n)+" مباريات (الأحدث أولاً)"));
@@ -1142,12 +1142,15 @@ function copyBtn(body,label,fn){
   var m=el("p","msg");m.id="statMsg";m.setAttribute("role","status");body.appendChild(m);
 }
 function seasonHead(t){var L="━━━━━━━━━━━━━━",n=S.history.length;return ["*"+t+"*","("+n+(n===1?" مباراة":" مباريات")+" حتى "+fmtDate(S.history[0]?S.history[0].date:S.session.date)+")",L]}
+// points can be half (assist = 0.5): show 12.5 not 12.500000001
+function fp(p){p=Math.round((Number(p)||0)*10)/10;return Number.isInteger(p)?String(p):p.toFixed(1)}
+function ptsWord(p){return fp(p)+(p===1?" نقطة":" نقاط")}
 function rankText(){
   var o=seasonHead("🏆 ترتيب لاعبين تمرين السبت");
-  o.push("النقاط: فوز 3 · تعادل 1 · ⭐ +2 · 🛡️ +2","");
+  o.push("النقاط: فوز 3 · تعادل 1 · ⚽ هدف 1 · 🎯 صناعة ½ · ⭐ +2 · 🛡️ +2","");
   S.stats.rank.forEach(function(s,i){
     var ex=[];if(s.goals)ex.push("⚽"+s.goals);if(s.assists)ex.push("🎯"+s.assists);if(s.mvp)ex.push("⭐"+s.mvp);if(s.def)ex.push("🛡️"+s.def);
-    o.push((i+1)+"- "+s.name+": *"+s.pts+"* "+(s.pts===1?"نقطة":"نقاط")+" (ف"+s.w+" ت"+s.d+" خ"+s.l+")"+(ex.length?" "+ex.join(" "):""))});
+    o.push((i+1)+"- "+s.name+": *"+fp(s.pts)+"* "+(s.pts===1?"نقطة":"نقاط")+" (ف"+s.w+" ت"+s.d+" خ"+s.l+")"+(ex.length?" "+ex.join(" "):""))});
   if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
   return o.join("\n");
 }
