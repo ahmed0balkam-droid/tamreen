@@ -227,6 +227,17 @@ textarea{font-size:.85rem;line-height:1.6;min-height:200px;margin-top:10px;direc
 .phead{display:flex;align-items:center;gap:14px;padding-inline-end:40px}
 .pava{flex:none;width:76px;height:76px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 30% 25%,#ff9a52,#c94a00);border:3px solid #ffd23f;color:#111;font:800 1.9rem/1 var(--f-display);overflow:hidden}
 .pava img{width:100%;height:100%;object-fit:cover}
+.badges{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.badge{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:12px;border:1px solid rgba(255,210,63,.45);background:rgba(255,210,63,.08);min-width:0}
+.badge i{font-style:normal;font-size:1.4rem;flex:none}.badge div{min-width:0;display:flex;flex-direction:column}
+.badge b{font-size:.85rem;overflow-wrap:anywhere}.badge small{font-size:.72rem;color:var(--muted);font-weight:700}
+.badge.off{border-color:var(--line);background:rgba(255,255,255,.03);opacity:.55}.badge.off i{filter:grayscale(1)}
+.events{display:flex;flex-direction:column;gap:6px;margin:10px 0;padding:10px;border-radius:12px;border:1px solid rgba(255,210,63,.5);background:rgba(255,210,63,.07)}
+.events p{margin:0;font-size:.9rem;line-height:1.6;font-weight:700}
+.recs{display:flex;flex-direction:column;gap:8px}
+.rec{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}
+.rec i{font-style:normal;font-size:1.5rem}.rec .t{display:flex;flex-direction:column;gap:2px;min-width:0}.rec .t small{color:var(--muted);font-weight:700;font-size:.75rem}
+.rec .t b{overflow-wrap:anywhere}.rec .v{font:700 1.4rem/1 var(--f-num);color:var(--gold)}
 .phototools{gap:8px}.phototools .btn{flex:1 1 140px;padding:10px;font-size:.88rem}
 .phead h3{margin:0;font:800 1.35rem/1.3 var(--f-display);overflow-wrap:anywhere}
 .phead small{color:var(--muted);font-weight:700}
@@ -402,6 +413,7 @@ details.rules ul{margin:10px 0 0;padding:0 1.1em 0 0;line-height:1.9;font-size:.
       <button type="button" role="tab" id="tabAssists" aria-selected="false">صناعة الأهداف</button>
       <button type="button" role="tab" id="tabWins" aria-selected="false">الانتصارات</button>
       <button type="button" role="tab" id="tabMonth" aria-selected="false">جوائز الشهر</button>
+      <button type="button" role="tab" id="tabRecords" aria-selected="false">الأرقام القياسية</button>
       <button type="button" role="tab" id="tabMatches" aria-selected="false">الأسابيع السابقة</button>
       <button type="button" role="tab" id="tabCommit" aria-selected="false">الالتزام</button>
     </div>
@@ -863,6 +875,7 @@ function drawResult(){
     [["⚽ الهدافون",namesG(m.scorers)||"—"],["🎯 الصناعة",namesG(m.assisters)||"—"],["⭐ أفضل لاعب",voteLine(m.mvp,true)],["🛡️ أفضل مدافع",voteLine(m.def,true)]].forEach(function(r){
       var row=el("div","rrow");row.appendChild(el("b",null,r[0]));row.appendChild(el("span",null,r[1]));rp.appendChild(row)});
     var wl=winLeader();if(wl){var row2=el("div","rrow");row2.appendChild(el("b",null,"🏅 الأكثر فوزاً"));row2.appendChild(el("span",null,wl));rp.appendChild(row2)}
+    var evl=eventLines(m.sid);if(evl.records.length||evl.badges.length){var eb=el("div","events");evl.records.concat(evl.badges).forEach(function(t){eb.appendChild(el("p",null,t))});rp.appendChild(eb)}
     var br=el("div","row");
     var cb=el("button","btn ghost","نسخ التقرير للواتساب");cb.type="button";cb.addEventListener("click",function(){copyStr(reportText(),"repMsg")});
     var ib=el("button","btn primary","صورة نتيجة الأسبوع");ib.type="button";ib.id="resImgBtn";ib.addEventListener("click",buildResultImage);
@@ -1078,6 +1091,18 @@ function drawStats(){
     var cb=el("button","btn ghost","نسخ جوائز الشهر للواتساب");cb.type="button";cb.style.width="100%";cb.style.marginTop="12px";
     cb.addEventListener("click",function(){copyStr(monthText(M),"monMsg")});body.appendChild(cb);
     var mm=el("p","msg");mm.id="monMsg";mm.setAttribute("role","status");body.appendChild(mm);
+  } else if(tab==="records"){
+    var A=achievements();
+    if(!(S.history||[]).length){body.appendChild(el("p","note","تظهر الأرقام القياسية بعد تسجيل نتيجة أول مباراة."));return}
+    var rl=el("div","recs");
+    RECORDS.forEach(function(r){var R=A.records[r.id];if(!R.best)return;var row=el("div","rec");row.appendChild(el("i",null,r.icon));
+      var t=el("div","t");t.appendChild(el("small",null,r.name));var b=el("b");
+      R.holders.forEach(function(h,i){if(i)b.appendChild(document.createTextNode(" و "));b.appendChild(h.pid?plink(h.name,h.pid):document.createTextNode(h.name))});
+      t.appendChild(b);t.appendChild(el("small",null,R.holders.map(function(h){return h.month?monthLabel(h.month):fmtDate(h.date)}).join(" · ")));row.appendChild(t);
+      row.appendChild(el("span","v",String(R.best)));rl.appendChild(row)});
+    body.appendChild(rl);
+    body.appendChild(el("p","note","لما أحد يكسر رقم قياسي يظهر «🚨 رقم قياسي جديد» في نتيجة الأسبوع والتقرير."));
+    copyBtn(body,"📋 نسخ الأرقام القياسية",recordsText);
   } else if(tab==="commit"){
     var c=S.stats.commit;
     if(!c.length){body.appendChild(el("p","note","يظهر سجل الالتزام بعد أول مباراة أو أول انسحاب متأخر."));return}
@@ -1138,10 +1163,13 @@ function openCard(pid,from){
   var tx=el("div");tx.style.minWidth="0";tx.appendChild(el("h3",null,name));
   if(d.rank)tx.appendChild(el("div","prank","🏆 المركز "+d.rank+" من "+d.total+" · "+ptsWord(d.pts)));
   var titles=(S.potm||[]).filter(function(m){return m.final&&m.winners.some(function(x){return x.player_id===pid})});
-  if(titles.length){var tt=el("div","prank","🏅 لاعب الشهر ×"+titles.length+" · "+titles.map(function(m){return m.label}).join("، "));tt.style.background="rgba(255,210,63,.16)";tt.style.marginInlineStart="0";tx.appendChild(tt)}
+  if(titles.length){var tt=el("div","prank","🏅 لاعب الشهر"+(titles.length>1?" "+cnt(titles.length,"","مرتين","مرات","مرة"):"")+" · "+titles.map(function(m){return m.label}).join("، "));tt.style.background="rgba(255,210,63,.16)";tt.style.marginInlineStart="0";tx.appendChild(tt)}
   else tx.appendChild(el("small",null,"ما لعب أي مباراة مسجّلة بعد"));
   hd.appendChild(tx);c.appendChild(hd);
   if(S.isAdmin||(S.myPlayers||[]).indexOf(pid)>=0)c.appendChild(photoTools(pid,name));
+  if(d.n){var shr=el("button","btn primary","🃏 شارك الكرت كصورة");shr.type="button";shr.style.width="100%";
+    var shBox=el("div");var shMsg=el("p","msg");shMsg.id="cardMsg";shMsg.setAttribute("role","status");
+    shr.addEventListener("click",function(){buildCardImage(pid,name,d,shBox)});c.appendChild(shr);c.appendChild(shBox);c.appendChild(shMsg)}
   if(d.n){
     var rate=Math.round(d.w/d.n*100);
     var tl=el("div","ptiles");
@@ -1160,6 +1188,14 @@ function openCard(pid,from){
     line("🤝 أفضل شريك",d.partner?d.partner.name+" (فازوا "+d.partner.w+" من "+d.partner.p+")":"يحتاج مباراتين على الأقل مع نفس اللاعب");
     line("🧱 أهداف دخلت على فريقه",d.ga+" في "+cnt(d.n,"مباراة","مباراتين","مباريات","مباراة"));
     c.appendChild(ln);
+    var bl=badgeList(pid),got=bl.filter(function(x){return x.earned});
+    c.appendChild(el("h4",null,"🎖️ الأوسمة ("+got.length+" من "+bl.length+")"));
+    var bg=el("div","badges");
+    got.concat(bl.filter(function(x){return !x.earned})).forEach(function(x){var e=el("div","badge"+(x.earned?"":" off"));e.appendChild(el("i",null,x.b.icon));
+      var t=el("div");t.appendChild(el("b",null,x.b.name+(x.earned&&x.label?" · "+x.label:"")));
+      var hint=x.earned?(x.next?"التالي: "+bU(x.b,x.next)+" (عندك "+x.v+")":(x.b.repeat?"":"أعلى مستوى ✅")):((x.b.hint||bU(x.b,x.b.steps[0]))+(x.b.repeat?"":" · "+x.v+"/"+x.b.steps[0]));
+      if(hint)t.appendChild(el("small",null,hint));e.appendChild(t);bg.appendChild(e)});
+    c.appendChild(bg);
     c.appendChild(el("h4",null,"سجل المباريات"));
     var ls=el("div","plast");d.games.slice().reverse().slice(0,6).forEach(function(g){var p=el("p");
       p.appendChild(el("span",null,fmtDate(g.h.date)));
@@ -1172,6 +1208,147 @@ function openCard(pid,from){
   ov.addEventListener("click",function(e){if(e.target===ov)closeCard()});
   document.body.appendChild(ov);document.body.style.overflow="hidden";x.focus();
 }
+
+/* ---------- achievements: badges (أوسمة) + records (أرقام قياسية), computed from the match history ---------- */
+var BADGES=[
+  {id:"goals",icon:"⚽",name:"الهدّاف",u:["هدف","هدفين","أهداف","هدف"],steps:[5,10,25,50]},
+  {id:"assists",icon:"🎯",name:"الممرّر",u:["صناعة","صناعتين","صناعات","صناعة"],steps:[3,10,25,50]},
+  {id:"games",icon:"🏟️",name:"المخضرم",u:["مباراة","مباراتين","مباريات","مباراة"],steps:[5,10,25,50]},
+  {id:"mvp",icon:"⭐",name:"النجم",u:["مرة أفضل لاعب","مرتين أفضل لاعب","مرات أفضل لاعب","مرة أفضل لاعب"],steps:[1,3,5,10],hint:"تفوز بأفضل لاعب"},
+  {id:"def",icon:"🛡️",name:"الجدار",u:["مرة أفضل مدافع","مرتين أفضل مدافع","مرات أفضل مدافع","مرة أفضل مدافع"],steps:[1,3,5,10],hint:"تفوز بأفضل مدافع"},
+  {id:"streak",icon:"🔥",name:"المنتصر",u:["انتصار","انتصارين متتاليين","انتصارات متتالية","انتصار متتالي"],steps:[3,5,7]},
+  {id:"loyal",icon:"📅",name:"الملتزم",u:["أسبوع","أسبوعين متتاليين","أسابيع متتالية","أسبوع متتالي"],steps:[4,8,12]},
+  {id:"hattrick",icon:"🎩",name:"هاتريك",u:["مرة","مرتين","مرات","مرة"],steps:[1],repeat:true,hint:"3 أهداف في مباراة"},
+  {id:"bignight",icon:"🎆",name:"ليلة كبيرة",u:["مرة","مرتين","مرات","مرة"],steps:[1],repeat:true,hint:"4 مساهمات (أهداف + صناعة) في مباراة"},
+  {id:"potm",icon:"🏅",name:"لاعب الشهر",u:["مرة","مرتين","مرات","مرة"],steps:[1],repeat:true,hint:"أكثر نقاط في شهر"}
+];
+function bU(b,n){return cnt(n,b.u[0],b.u[1],b.u[2],b.u[3])}
+function monthLabel(mk){var p=String(mk).split("-");return MONTHS[Number(p[1])-1]+" "+p[0]}
+var RECORDS=[
+  {id:"goalsMatch",icon:"⚽",name:"أكثر أهداف لاعب في مباراة",u:["هدف","هدفين","أهداف","هدف"]},
+  {id:"assistsMatch",icon:"🎯",name:"أكثر صناعة لاعب في مباراة",u:["صناعة","صناعتين","صناعات","صناعة"]},
+  {id:"contribMatch",icon:"🎆",name:"أكثر مساهمات لاعب في مباراة",u:["مساهمة","مساهمتين","مساهمات","مساهمة"]},
+  {id:"bigWin",icon:"💥",name:"أكبر فوز",u:["هدف فارق","هدفين فارق","أهداف فارق","هدف فارق"]},
+  {id:"goalFest",icon:"🎇",name:"أكثر أهداف في مباراة (المجموع)",u:["هدف","هدفين","أهداف","هدف"]},
+  {id:"winStreak",icon:"🔥",name:"أطول سلسلة انتصارات",u:["انتصار","انتصارين","انتصارات","انتصار"]},
+  {id:"goalsMonth",icon:"📆",name:"أكثر أهداف لاعب في شهر",u:["هدف","هدفين","أهداف","هدف"]}
+];
+var achCache=null;
+function achievements(){
+  if(achCache&&achCache.key===S.builtAt)return achCache;
+  var H=(S.history||[]).slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:0});
+  var P={},ev={},rec={};
+  RECORDS.forEach(function(r){rec[r.id]={best:0,holders:[]}});
+  function pl(p){return P[p.player_id]||(P[p.player_id]={player_id:p.player_id,name:p.name,goals:0,assists:0,games:0,mvp:0,def:0,run:0,bestRun:0,loyal:0,bestLoyal:0,hattrick:0,bignight:0,potm:0,lastIdx:-9,earned:{},month:{}})}
+  function E(sid){return ev[sid]||(ev[sid]={badges:[],records:[]})}
+  function level(b,v){var l=0;b.steps.forEach(function(s,i){if(v>=s)l=i+1});return l}
+  function bump(h,p,before){BADGES.forEach(function(b){if(b.id==="potm")return;var v=p[b.id==="streak"?"bestRun":b.id==="loyal"?"bestLoyal":b.id],was=before[b.id];
+    if(b.repeat){if(v>was)E(h.sid).badges.push({pid:p.player_id,name:p.name,b:b,label:b.icon+" "+b.name+(v>1?" ("+bU(b,v)+")":"")});return}
+    var l=level(b,v),lw=level(b,was);if(l>lw)E(h.sid).badges.push({pid:p.player_id,name:p.name,b:b,label:b.icon+" "+b.name+" — "+bU(b,b.steps[l-1])})})}
+  function snap(p){return {goals:p.goals,assists:p.assists,games:p.games,mvp:p.mvp,def:p.def,streak:p.bestRun,loyal:p.bestLoyal,hattrick:p.hattrick,bignight:p.bignight}}
+  // candidates are collected per match, then compared with the record as it stood BEFORE that match
+  var pend={};
+  function record(h,id,val,holder){if(val>0)(pend[id]=pend[id]||[]).push({val:val,holder:holder})}
+  function settle(h){Object.keys(pend).forEach(function(id){var R=rec[id],def=RECORDS.filter(function(r){return r.id===id})[0];
+      var top=Math.max.apply(null,pend[id].map(function(c){return c.val})),who=pend[id].filter(function(c){return c.val===top}).map(function(c){return c.holder});
+      if(top>R.best){if(R.best>0)who.forEach(function(w){E(h.sid).records.push({r:def,val:top,holder:w,prev:R.best,kind:"new"})});R.best=top;R.holders=who}
+      else if(top===R.best){who.forEach(function(w){if(!R.holders.some(function(x){return x.pid&&x.pid===w.pid})){R.holders.push(w);E(h.sid).records.push({r:def,val:top,holder:w,kind:"equal"})}})}});
+    pend={}}
+  H.forEach(function(h,idx){
+    var GL={},AS={};(h.scorers||[]).forEach(function(g){GL[g.player_id]=g.g});(h.assisters||[]).forEach(function(g){AS[g.player_id]=g.g});
+    var mk=String(h.date).slice(0,7);
+    [["A",h.teamA],["B",h.teamB]].forEach(function(t){(t[1]||[]).forEach(function(q){
+      var p=pl(q),before=snap(p),g=GL[q.player_id]||0,a=AS[q.player_id]||0;
+      var res=h.winner==="draw"?"D":h.winner===t[0]?"W":"L";
+      p.games++;p.goals+=g;p.assists+=a;
+      if((h.mvp||[]).some(function(x){return x.player_id===q.player_id}))p.mvp++;
+      if((h.def||[]).some(function(x){return x.player_id===q.player_id}))p.def++;
+      if(res==="W"){p.run++;p.bestRun=Math.max(p.bestRun,p.run)}else p.run=0;
+      p.loyal=p.lastIdx===idx-1?p.loyal+1:1;p.lastIdx=idx;p.bestLoyal=Math.max(p.bestLoyal,p.loyal);
+      if(g>=3)p.hattrick++;if(g+a>=4)p.bignight++;
+      p.month[mk]=(p.month[mk]||0)+g;
+      bump(h,p,before);
+      var who={pid:p.player_id,name:p.name,date:h.date,sid:h.sid};
+      record(h,"goalsMatch",g,who);record(h,"assistsMatch",a,who);record(h,"contribMatch",g+a,who);
+      if(res==="W")record(h,"winStreak",p.run,who);
+    })});
+    var diff=Math.abs(h.sa-h.sb),score={pid:null,name:"A "+h.sa+" – "+h.sb+" B",date:h.date,sid:h.sid};
+    record(h,"bigWin",diff,score);record(h,"goalFest",h.sa+h.sb,score);
+    settle(h);
+  });
+  // goals in a month: decided per month, recorded at that month's last match
+  var byMonth={};H.forEach(function(h){byMonth[String(h.date).slice(0,7)]=h});
+  Object.keys(byMonth).sort().forEach(function(mk){var h=byMonth[mk];
+    Object.keys(P).map(function(k){return P[k]}).filter(function(p){return p.month[mk]}).sort(function(a,b){return b.month[mk]-a.month[mk]})
+      .forEach(function(p){record(h,"goalsMonth",p.month[mk],{pid:p.player_id,name:p.name,date:h.date,sid:h.sid,month:mk})});
+    settle(h)});
+  (S.potm||[]).filter(function(m){return m.final}).forEach(function(m){m.winners.forEach(function(w){pl(w).potm++})});
+  achCache={key:S.builtAt,players:P,events:ev,records:rec};
+  return achCache;
+}
+function badgeList(pid){
+  var p=achievements().players[pid];if(!p)return [];
+  return BADGES.map(function(b){var v=b.id==="streak"?p.bestRun:b.id==="loyal"?p.bestLoyal:p[b.id]||0,l=0;b.steps.forEach(function(s,i){if(v>=s)l=i+1});
+    var next=b.repeat?null:b.steps[l]||null;
+    return {b:b,v:v,level:l,earned:l>0,label:b.repeat?(v>1?bU(b,v):""):(l?bU(b,b.steps[l-1]):""),next:next}});
+}
+function eventLines(sid){
+  var e=achievements().events[sid];if(!e)return {records:[],badges:[]};
+  // one line per record: «🚨 رقم قياسي جديد: …» or «🤝 معادلة الرقم: …», holders joined
+  var rg={},ro=[];e.records.forEach(function(x){var k=x.kind+"|"+x.r.id;if(!rg[k]){rg[k]={x:x,names:[]};ro.push(k)}rg[k].names.push(x.holder.name)});
+  return {records:ro.map(function(k){var x=rg[k].x,n=rg[k].names,v=cnt(x.val,x.r.u[0],x.r.u[1],x.r.u[2],x.r.u[3]);
+            return (x.kind==="new"?"🚨 رقم قياسي جديد: ":"🤝 معادلة الرقم: ")+x.r.name+" — "+(x.holder.pid?n.join("، ")+" ("+v+")":n.join("، "))+(x.kind==="new"?" · كان "+x.prev:"")}),
+          // same badge for several players in one week → one line
+          badges:(function(){var g={},order=[];e.badges.forEach(function(x){if(!g[x.label]){g[x.label]=[];order.push(x.label)}g[x.label].push(x.name)});
+            return order.map(function(l){var n=g[l];return "🎖️ "+l+": "+(n.length>4?n.slice(0,3).join("، ")+" و"+(n.length-3)+" آخرين":n.join("، "))})})()};
+}
+
+
+/* ---------- shareable player card image (1080×1350, story/WhatsApp friendly) ---------- */
+function loadImg(src){return new Promise(function(res){if(!src)return res(null);var im=new Image();im.crossOrigin="anonymous";im.onload=function(){res(im)};im.onerror=function(){res(null)};im.src=src})}
+function drawAvatar(x,im,name,cx,cy,r,ring){
+  x.save();x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.closePath();
+  if(im){x.clip();x.drawImage(im,cx-r,cy-r,r*2,r*2)}
+  else{var g=x.createRadialGradient(cx-r*.3,cy-r*.4,r*.1,cx,cy,r);g.addColorStop(0,"#ff9a52");g.addColorStop(1,"#c94a00");x.fillStyle=g;x.fill();
+    x.fillStyle="#111";x.font='800 '+Math.round(r*0.8)+'px "El Messiri","Tajawal",sans-serif';x.textAlign="center";x.textBaseline="middle";x.direction="rtl";x.fillText(initials(name),cx,cy+r*0.05);x.textBaseline="alphabetic"}
+  x.restore();if(ring){x.beginPath();x.arc(cx,cy,r,0,Math.PI*2);x.strokeStyle=ring;x.lineWidth=Math.max(3,r*0.08);x.stroke()}
+}
+function buildCardImage(pid,name,d,box){
+  msg("cardMsg","جاري تجهيز الكرت…");
+  var fonts=document.fonts?Promise.all(['700 80px "El Messiri"','800 34px "Tajawal"','700 50px "Oswald"'].map(function(f){return document.fonts.load(f)})).catch(function(){}):Promise.resolve();
+  Promise.all([fonts,loadImg(S.photos&&S.photos[pid]?photoUrl(pid):null)]).then(function(r){
+    var im=r[1],W=1080,Hh=1350,c=document.createElement("canvas");c.width=W;c.height=Hh;var x=c.getContext("2d");
+    var bg=x.createLinearGradient(0,0,W,Hh);bg.addColorStop(0,"#2a1405");bg.addColorStop(.45,"#0d0d0d");bg.addColorStop(1,"#050505");x.fillStyle=bg;x.fillRect(0,0,W,Hh);
+    x.save();x.globalAlpha=.06;x.strokeStyle="#ffd23f";x.lineWidth=26;for(var k=-Hh;k<W;k+=90){x.beginPath();x.moveTo(k,0);x.lineTo(k+Hh,Hh);x.stroke()}x.restore();
+    var gl=x.createRadialGradient(W/2,420,40,W/2,420,520);gl.addColorStop(0,"rgba(255,106,19,.35)");gl.addColorStop(1,"rgba(0,0,0,0)");x.fillStyle=gl;x.fillRect(0,0,W,Hh);
+    x.strokeStyle="#ffd23f";x.lineWidth=6;rr(x,28,28,W-56,Hh-56,46);x.stroke();
+    x.strokeStyle="rgba(255,210,63,.35)";x.lineWidth=2;rr(x,48,48,W-96,Hh-96,34);x.stroke();
+    x.textAlign="center";x.direction="ltr";x.fillStyle="#ff6a13";x.font='700 30px "Oswald",sans-serif';x.fillText("MATCHDAY SQUAD · PLAYER CARD",W/2,118);
+    x.direction="rtl";x.fillStyle="#bdbdbd";x.font='700 30px "Tajawal",sans-serif';x.fillText("تمرين السبت ⚽",W/2,165);
+    drawAvatar(x,im,name,W/2,410,190,"#ffd23f");
+    x.fillStyle="#ffffff";x.font='700 92px "El Messiri","Tajawal",sans-serif';x.fillText(fit(x,name,W-160),W/2,720);
+    var pills=[];if(d.rank)pills.push("🏆 المركز "+d.rank+" · "+ptsWord(d.pts));
+    var titles=(S.potm||[]).filter(function(m){return m.final&&m.winners.some(function(w){return w.player_id===pid})});if(titles.length)pills.push("🏅 لاعب الشهر"+(titles.length>1?" "+cnt(titles.length,"","مرتين","مرات","مرة"):""));
+    x.font='800 34px "Tajawal",sans-serif';var pw=pills.map(function(p){return x.measureText(p).width+56}),tot=pw.reduce(function(a,b){return a+b},0)+(pills.length-1)*20,px=W/2+tot/2;
+    pills.forEach(function(p,i){var w=pw[i];x.fillStyle=i?"rgba(255,210,63,.18)":"rgba(255,106,19,.22)";rr(x,px-w,760,w,64,32);x.fill();x.fillStyle="#ffd23f";x.fillText(p,px-w/2,804);px-=w+20});
+    var st=[[d.n,"مباريات"],[d.w,"فوز"],[d.goals,"أهداف"],[d.assists,"صناعة"],[d.mvp,"أفضل لاعب ⭐"],[d.def,"أفضل مدافع 🛡️"]];
+    var gx=110,gw=(W-220-2*24)/3,gh=150;
+    st.forEach(function(s,i){var col=i%3,row=Math.floor(i/3),X=W-gx-gw-col*(gw+24),Y=860+row*(gh+22);
+      x.fillStyle="rgba(255,255,255,.06)";rr(x,X,Y,gw,gh,24);x.fill();
+      x.fillStyle=i===2||i===4?"#ffd23f":"#ffffff";x.direction="ltr";x.font='700 74px "Oswald",sans-serif';x.fillText(String(s[0]),X+gw/2,Y+86);x.direction="rtl";
+      x.fillStyle="#a8a8a8";x.font='700 28px "Tajawal",sans-serif';x.fillText(s[1],X+gw/2,Y+128)});
+    var got=badgeList(pid).filter(function(b){return b.earned}).slice(0,6);
+    if(got.length){var bw=130,bx=W/2+(got.length*bw)/2-bw/2;
+      got.forEach(function(b,i){var X=bx-i*bw;x.font='54px sans-serif';x.fillText(b.b.icon,X,1258);x.fillStyle="#cfcfcf";x.font='700 20px "Tajawal",sans-serif';x.fillText(fit(x,b.b.name,bw-8),X,1290);x.fillStyle="#fff"})}
+    else{x.fillStyle="#8a8a8a";x.font='700 28px "Tajawal",sans-serif';x.fillText("أول وسام قريب… 🎖️",W/2,1270)}
+    var url=c.toDataURL("image/png");
+    c.toBlob(function(b){var bu=URL.createObjectURL(b);box.textContent="";
+      var pv=el("img","hpic");pv.src=url;pv.alt="كرت "+name;box.appendChild(pv);
+      box.appendChild(imageActions(b,bu,"كرت-"+name+".png","كرت "+name,"cardMsg"));
+      msg("cardMsg","الكرت جاهز: «مشاركة أو حفظ» أو «تحميل الصورة».","ok")});
+  }).catch(function(){msg("cardMsg","ما قدرنا نجهز الكرت، حاول مرة ثانية.","err")});
+}
+
 /* ---------- player photo: crop to a square, shrink to 320px JPEG, send to the server ---------- */
 function photoUrl(pid){var v=S.photos&&S.photos[pid];var base=CFG.api.indexOf("http")===0?CFG.api:location.origin+CFG.api;return base+"?photo="+encodeURIComponent(pid)+"&v="+encodeURIComponent(v||"")}
 function photoTools(pid,name){
@@ -1218,6 +1395,7 @@ function histDetails(x){
     (t[1]||[]).forEach(function(p){var r=el("p"),sp=el("span");sp.appendChild(plink(p.name,p.player_id));r.appendChild(sp);var o=[];if(GL[p.player_id])o.push("⚽"+GL[p.player_id]);if(AS[p.player_id])o.push("🎯"+AS[p.player_id]);r.appendChild(el("em",null,o.join(" ")));c.appendChild(r)});
     tw.appendChild(c)});
   d.appendChild(tw);
+  var hev=eventLines(x.sid);if(hev.records.length||hev.badges.length){var eb=el("div","events");hev.records.concat(hev.badges).forEach(function(t){eb.appendChild(el("p",null,t))});d.appendChild(eb)}
   var row=el("div","row");
   var cp=el("button","btn ghost","📋 نسخ التقرير");cp.type="button";cp.addEventListener("click",function(){copyStr(reportText(x),"hMsg_"+x.sid)});
   var wa=el("a","btn wa","💬 واتساب");wa.target="_blank";wa.rel="noopener";wa.href="https://wa.me/?text="+encodeURIComponent(reportText(x));
@@ -1277,6 +1455,12 @@ function assistsText(){
   if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
   return o.join("\n");
 }
+function recordsText(){
+  var A=achievements(),L="━━━━━━━━━━━━━━",o=["*📜 الأرقام القياسية — تمرين السبت*",L];
+  RECORDS.forEach(function(r){var R=A.records[r.id];if(!R.best)return;o.push(r.icon+" *"+r.name+":* "+R.best+" — "+R.holders.map(function(h){return h.name}).join(" و "))});
+  if(S.appUrl)o.push("","📊 التفاصيل: "+S.appUrl);
+  return o.join("\n");
+}
 function winsText(){
   var o=seasonHead("🥇 الأكثر فوزاً في تمرين السبت");
   (S.stats.winners||[]).filter(function(x){return x.p>0}).forEach(function(x,i){o.push((i+1)+"- "+x.name+": فاز "+x.w+" من "+x.p+" ("+x.rate+"٪)")});
@@ -1292,6 +1476,7 @@ function reportText(hm){
   if(m.winner!=="draw")o.push("👥 "+(m.winner==="A"?m.teamA:m.teamB).map(function(p){return p.name}).join("، "));
   o.push(L,"⚽ *الهدافون:* "+(namesG(m.scorers)||"—"),"🎯 *الصناعة:* "+(namesG(m.assisters)||"—"),"⭐ *أفضل لاعب:* "+voteLine(m.mvp,!past),"🛡️ *أفضل مدافع:* "+voteLine(m.def,!past));
   if(!past&&winLeader())o.push("🏅 *الأكثر فوزاً بالموسم:* "+winLeader());
+  var evl=eventLines(m.sid);if(evl.records.length||evl.badges.length){o.push(L);evl.records.concat(evl.badges).forEach(function(t){o.push(t)})}
   if(S.appUrl)o.push(L,(past?"📊 التفاصيل: ":"🗳️ صوّت وشوف الإحصائيات: ")+S.appUrl);
   return o.join("\n");
 }
@@ -1366,7 +1551,9 @@ function buildImage(){
   if(!S.teams){msg("shareMsg","الصورة تتوفر بعد ظهور التوزيع.","err");return}
   msg("shareMsg","جاري تجهيز الصورة…");
   var fonts=document.fonts?Promise.all(['700 80px "El Messiri"','800 34px "Tajawal"','700 26px "Tajawal"','700 50px "Oswald"'].map(function(f){return document.fonts.load(f)})).catch(function(){}):Promise.resolve();
-  fonts.then(function(){
+  var everyone=S.teams[0].list.concat(S.teams[1].list),PH={};
+  var loads=everyone.map(function(p){return loadImg(S.photos&&S.photos[p.player_id]?photoUrl(p.player_id):null).then(function(im){PH[p.player_id]=im})});
+  Promise.all([fonts].concat(loads)).then(function(){
   var T=S.teams,s=S.session,rows=Math.max(T[0].list.length,T[1].list.length),bt=bibTeam();
   var W=1080,rowH=104,top=470,H=top+rows*rowH+(bt?120:40)+110;
   var c=document.createElement("canvas");c.width=W;c.height=H;var x=c.getContext("2d");
@@ -1395,7 +1582,10 @@ function buildImage(){
       x.fillStyle="rgba(255,255,255,.07)";rr(x,X,yy,colW,84,16);x.fill();
       x.fillStyle=acc;x.fillRect(al==="right"?X:X+colW-7,yy+10,7,64);
       if(!p)return;
-      x.fillStyle="#ffffff";x.font='800 32px "Tajawal",sans-serif';x.textAlign=al;var nmT=fit(x,p.name,colW-(p.cap?110:50));x.fillText(nmT,tx,yy+42);
+      // round photo (or initial) at the outer edge, name next to it
+      var acx=al==="right"?X+colW-56:X+56;drawAvatar(x,PH[p.player_id],p.name,acx,yy+42,32,acc);x.direction="rtl";
+      tx=al==="right"?tx-80:tx+80;
+      x.fillStyle="#ffffff";x.font='800 32px "Tajawal",sans-serif';x.textAlign=al;var nmT=fit(x,p.name,colW-(p.cap?190:130));x.fillText(nmT,tx,yy+42);
       if(p.cap){var w=x.measureText(nmT).width,bx2=al==="right"?tx-w-34:tx+w+34;
         x.fillStyle="#ff6a13";x.beginPath();x.arc(bx2,yy+31,21,0,Math.PI*2);x.fill();x.strokeStyle="#fff";x.lineWidth=3;x.stroke();
         x.fillStyle="#111";x.font='700 24px "Oswald",sans-serif';x.textAlign="center";x.direction="ltr";x.fillText("C",bx2,yy+40);x.direction="rtl";x.textAlign=al}
@@ -1544,7 +1734,7 @@ $("saveResult").addEventListener("click",function(){
 $("copyBtn").addEventListener("click",copyText);
 $("imgBtn").addEventListener("click",buildImage);
 $("imgShare").addEventListener("click",shareImage);
-[["tabRank","rank"],["tabScorers","scorers"],["tabAssists","assists"],["tabWins","wins"],["tabMonth","month"],["tabMatches","matches"],["tabCommit","commit"]].forEach(function(p){$(p[0]).addEventListener("click",function(){tab=p[1];drawStats()})});
+[["tabRank","rank"],["tabScorers","scorers"],["tabAssists","assists"],["tabWins","wins"],["tabMonth","month"],["tabRecords","records"],["tabMatches","matches"],["tabCommit","commit"]].forEach(function(p){$(p[0]).addEventListener("click",function(){tab=p[1];drawStats()})});
 $("adminTop").addEventListener("click",function(){
   if(S&&S.isAdmin){$("orgCard").scrollIntoView({behavior:"smooth",block:"start"});return}
   $("adminForm").hidden=false;$("adminForm").scrollIntoView({behavior:"smooth",block:"center"});setTimeout(function(){$("pin").focus()},350)});
