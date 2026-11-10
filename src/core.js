@@ -57,6 +57,82 @@ function getState(req) {
   return personalize_(base_(), req.device, isAdmin_(req.pin));
 }
 
+// merge a duplicate name into the right one: games, goals, votes, awards and photo all move over
+function adminMergePlayers(req) {
+  return write_(req, function () {
+    const keep = String(req.keep || ''), drop = String(req.drop || '');
+    if (!keep || !drop || keep === drop) throw new Error('اختر اسمين مختلفين.');
+    const players = rows_('players');
+    const K = players.filter(function (p) { return p.id === keep; })[0], D = players.filter(function (p) { return p.id === drop; })[0];
+    if (!K || !D) throw new Error('اللاعب غير موجود.');
+    let moved = 0;
+    rows_('regs').forEach(function (r) {
+      if (r.player_id !== drop) return;
+      const both = r.status === 'active' && rows_('regs').some(function (x) { return x.session_id === r.session_id && x.status === 'active' && x.player_id === keep; });
+      if (both) { r.status = 'removed'; r.reason = 'mistake'; r.removed_at = Date.now(); }
+      else r.player_id = keep;
+      update_('regs', r); moved++;
+    });
+    rows_('match_players').forEach(function (m) {
+      if (m.player_id !== drop) return;
+      const k = rows_('match_players').filter(function (x) { return x.session_id === m.session_id && x.player_id === keep; })[0];
+      if (k) {
+        k.goals = (Number(k.goals) || 0) + (Number(m.goals) || 0); k.assists = (Number(k.assists) || 0) + (Number(m.assists) || 0);
+        update_('match_players', k);
+        deleteWhere_('match_players', function (x) { return x._row === m._row; });
+      } else { m.player_id = keep; update_('match_players', m); }
+      moved++;
+    });
+    rows_('votes').forEach(function (v) { if (v.player_id === drop) { v.player_id = keep; update_('votes', v); } });
+    rows_('settings').forEach(function (s) {
+      let v = s.value, changed = false;
+      if (/^(ovr|cap)_/.test(s.key) && v.indexOf(drop) >= 0) {
+        try {
+          const o = JSON.parse(v);
+          if (s.key.indexOf('ovr_') === 0) { if (o[drop] && !o[keep]) o[keep] = o[drop]; delete o[drop]; }
+          else Object.keys(o).forEach(function (t) { if (o[t] === drop) o[t] = keep; });
+          v = JSON.stringify(o); changed = true;
+        } catch (e) { /* leave it */ }
+      }
+      if (/^pick_/.test(s.key) && v === drop) { v = keep; changed = true; }
+      if (changed) { s.value = v; update_('settings', s); }
+    });
+    const hasKeep = !!setting_('photo_' + keep), hasDrop = !!setting_('photo_' + drop);
+    if (hasDrop) {
+      if (!hasKeep) setSetting_('photo_' + keep, setting_('photo_' + drop));
+      deleteWhere_('settings', function (x) { return x.key === 'photo_' + drop; });
+      TX.photoMerge = { from: drop, to: keep, move: !hasKeep };
+    }
+    deleteWhere_('players', function (x) { return x.id === drop; });
+    return 'تم دمج «' + D.name + '» في «' + K.name + '» ✅ (' + moved + ' سجل انتقل).';
+  }, true);
+}
+
+// organizer: «they are two different people» — stop suggesting this pair
+function adminNotDuplicate(req) {
+  return write_(req, function () {
+    const pair = [String(req.a || ''), String(req.b || '')].sort().join('|');
+    if (pair.indexOf('|') <= 0) throw new Error('اختر الاسمين.');
+    let list = []; try { list = JSON.parse(setting_('notdup') || '[]'); } catch (e) { list = []; }
+    if (list.indexOf(pair) < 0) list.push(pair);
+    setSetting_('notdup', JSON.stringify(list.slice(-300)));
+    return 'تمام، ما راح نقترح دمجهم مرة ثانية.';
+  }, true);
+}
+
+function adminRenamePlayer(req) {
+  return write_(req, function () {
+    const name = cleanName_(req.name);
+    if (!name) throw new Error('اكتب الاسم.');
+    const p = rows_('players').filter(function (x) { return x.id === String(req.player_id || ''); })[0];
+    if (!p) throw new Error('اللاعب غير موجود.');
+    const other = rows_('players').filter(function (x) { return x.id !== p.id && normKey_(x.name) === normKey_(name); })[0];
+    if (other) throw new Error('الاسم «' + other.name + '» موجود. استخدم «دمج» بدل تغيير الاسم.');
+    const old = p.name; p.name = name; update_('players', p);
+    return 'تم تغيير «' + old + '» إلى «' + name + '».';
+  }, true);
+}
+
 // photo of a player: the organizer, or the phone that registered that player
 function setPhoto(req) {
   return write_(req, function (admin) {
@@ -104,6 +180,11 @@ function register(req) {
     const key = normKey_(name);
     const players = rows_('players');
     let p = players.filter(function (x) { return normKey_(x.name) === key; })[0];
+    if (!p && !req.confirmNew) {
+      const sim = similarPlayers_(name, players);
+      // the page shows «تقصد…؟» with these names; registering again with confirmNew creates the new name
+      if (sim.length) throw new Error('تقصد واحد من هذي الأسماء؟||' + JSON.stringify(sim));
+    }
     if (!p) {
       p = { id: uid_(), name: name, pos: pos, created_at: now };
       append_('players', p);
@@ -514,7 +595,7 @@ function buildBase_() {
   out.locked = now >= out.lockAt;
   out.list = active.slice(0, CAP).map(function (r, i) {
     const p = pmap[r.player_id] || { name: '؟' };
-    return { id: r.id, player_id: r.player_id, name: p.name, pos: r.pos, rank: i + 1, device: r.device };
+    return { id: r.id, player_id: r.player_id, name: p.name, pos: r.pos, rank: i + 1, device: r.device, at: Number(r.created_at) || 0, byAdmin: String(r.by_admin) === '1' };
   });
   const mains = out.list.slice(0, MAIN);
   const settingsRows = rows_('settings');
@@ -709,9 +790,46 @@ function personalize_(b, device, admin) {
   out.list.forEach(function (r) {
     r.mine = !!device && r.device === device;
     if (r.mine) { r.friend = out.myCount > 0; out.myCount++; }
+    if (admin) r.dev = devCode_(r.device);
     delete r.device;
   });
+  if (admin && out.session) adminView_(out);
   return out;
+}
+
+// short, stable code for a phone (the raw id stays secret): same code = same phone
+function devCode_(d) {
+  if (!d) return '';
+  let h = 2166136261;
+  for (let i = 0; i < d.length; i++) { h ^= d.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h.toString(36).toUpperCase().slice(-4).padStart(4, '0');
+}
+// organizer only: who registered what, from which phone, and every player (for merge / rename)
+function adminView_(out) {
+  const sid = out.session.id, pm = {};
+  (TX.tables.players || []).forEach(function (p) { pm[p.id] = p.name; });
+  const regs = (TX.tables.regs || []).filter(function (r) { return r.session_id === sid; });
+  out.regLog = [];
+  regs.forEach(function (r) {
+    out.regLog.push({ t: Number(r.created_at) || 0, kind: 'add', name: pm[r.player_id] || '؟', dev: devCode_(r.device), byAdmin: String(r.by_admin) === '1' });
+    if (r.status === 'removed') out.regLog.push({ t: Number(r.removed_at) || 0, kind: 'remove', name: pm[r.player_id] || '؟', reason: r.reason, dev: devCode_(r.device), byAdmin: String(r.by_admin) === '1' });
+  });
+  out.regLog.sort(function (a, b) { return b.t - a.t; });
+  const games = {}, weeks = {};
+  (TX.tables.match_players || []).forEach(function (m) { games[m.player_id] = (games[m.player_id] || 0) + 1; });
+  (TX.tables.regs || []).forEach(function (r) { if (r.status === 'active') weeks[r.player_id] = (weeks[r.player_id] || 0) + 1; });
+  out.allPlayers = (TX.tables.players || []).map(function (p) { return { id: p.id, name: p.name, games: games[p.id] || 0, regs: weeks[p.id] || 0, created: Number(p.created_at) || 0 }; })
+    .sort(function (a, b) { return a.name.localeCompare(b.name, 'ar'); });
+  // possible duplicates: pairs of names that look alike
+  const dups = [];
+  let notdup = []; try { notdup = JSON.parse(setting_('notdup') || '[]'); } catch (e) { notdup = []; }
+  out.allPlayers.forEach(function (a, i) {
+    out.allPlayers.slice(i + 1).forEach(function (b) {
+      if (notdup.indexOf([a.id, b.id].sort().join('|')) >= 0) return;
+      if (similarPlayers_(a.name, [{ name: b.name }]).length || similarPlayers_(b.name, [{ name: a.name }]).length) dups.push([a.id, b.id]);
+    });
+  });
+  out.dupPairs = dups.slice(0, 20);
 }
 
 /* ============ teams (deterministic, same result for everyone) ============ */
@@ -816,9 +934,40 @@ function at_(date, hm) { return new Date(date + 'T' + hm + ':00' + OFFSET).getTi
 function pad_(n) { return (n < 10 ? '0' : '') + n; }
 function uid_() { return crypto.randomUUID().replace(/-/g, '').slice(0, 12); }
 function cleanName_(s, max) { return String(s || '').replace(/\s+/g, ' ').trim().slice(0, max || 30); }
-function normKey_(s) {
-  return cleanName_(s).replace(/[ً-ْٰـ]/g, '').replace(/[أإآٱ]/g, 'ا')
-    .replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
+// same person = same key: diacritics/tatweel removed, أ إ آ → ا, ة → ه, ى/ئ → ي, ؤ → و, spaces ignored
+function normWords_(s) {
+  return cleanName_(s).replace(/[\u064B-\u0652\u0670\u0640]/g, '').replace(/[أإآٱ]/g, 'ا')
+    .replace(/ة/g, 'ه').replace(/[ىئ]/g, 'ي').replace(/ؤ/g, 'و').toLowerCase();
+}
+function normKey_(s) { return normWords_(s).replace(/\s+/g, ''); }
+// letters people swap when typing names (ظ/ض, ذ/ز, ص/س, ط/ت, ث/س, ح/ه)
+function looseKey_(k) { return k.replace(/ظ/g, 'ض').replace(/ذ/g, 'ز').replace(/[صث]/g, 'س').replace(/ط/g, 'ت').replace(/ح/g, 'ه'); }
+function lev_(a, b) {
+  if (a === b) return 0; if (!a.length) return b.length; if (!b.length) return a.length;
+  let prev = []; for (let j = 0; j <= b.length; j++) prev[j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[b.length];
+}
+// existing players whose name is close to a new one (typo, missing letter, first name only, cut-off name)
+function similarPlayers_(name, players) {
+  const key = normKey_(name), words = normWords_(name).split(' ');
+  const out = [];
+  players.forEach(function (p) {
+    const k = normKey_(p.name), pw = normWords_(p.name).split(' ');
+    if (!k || k === key) return;
+    if (key.replace(/\D/g, '') !== k.replace(/\D/g, '')) return;                 // «لاعب 15» ≠ «لاعب 16»
+    const m = Math.min(key.length, k.length), d = lev_(key, k), lim = m >= 9 ? 2 : m >= 5 ? 1 : 0; // «احمد» ≠ «محمد»
+    let score = d <= lim ? d : 99;
+    if (score === 99 && looseKey_(key) === looseKey_(k)) score = 1;                    // «مضفر» → «مظفر»
+    if (score === 99 && words.length === 1 && key.length >= 3 && pw[0] === words[0]) score = 3;           // «احمد» → «احمد الجعدبي»
+    if (score === 99 && Math.min(key.length, k.length) >= 5 && (k.indexOf(key) === 0 || key.indexOf(k) === 0)) score = 4; // cut-off
+    if (score < 99) out.push({ name: p.name, score: score });
+  });
+  return out.sort(function (a, b) { return a.score - b.score || a.name.localeCompare(b.name, 'ar'); }).slice(0, 4).map(function (x) { return x.name; });
 }
 function nextSaturday_() {
   const now = new Date();

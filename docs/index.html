@@ -97,6 +97,19 @@ input:focus-visible,button:focus-visible,textarea:focus-visible,.pos input:focus
 .shirt .nm{font-size:11px;font-weight:800;text-align:center;line-height:1.25;min-height:28px;overflow-wrap:anywhere;max-width:100%}
 .shirt.empty .nm{color:var(--muted);font-weight:500}
 .shirt .ps{font-size:10px;color:var(--muted)}
+.dv{font:700 10px/1.3 var(--f-num),monospace;color:var(--muted);letter-spacing:.04em;direction:ltr;unicode-bidi:isolate;white-space:nowrap}
+.dv.multi{background:#ffe08a;color:#14213d;border-radius:6px;padding:0 5px}
+.quick{width:100%;margin-bottom:12px}
+.suggest{margin-top:10px;padding:12px;border-radius:12px;border:1.5px solid var(--sky,#5fb2e6);background:rgba(95,178,230,.10)}
+.suggest p{margin:0 0 8px;font-weight:800}
+.suggest .row{flex-wrap:wrap;gap:8px}
+.logbox{margin-top:10px}.logbox summary{cursor:pointer;font-weight:800;padding:6px 0}
+.loglist{display:flex;flex-direction:column;gap:4px;max-height:320px;overflow:auto;font-size:.88rem}
+.loglist div{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--line)}
+.loglist time{color:var(--muted);font-size:.8rem;white-space:nowrap}
+.duprow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.duprow b{flex:1 1 100%}
+.devwarn{margin:8px 0 0;padding:8px 10px;border-radius:10px;background:#fff4cc;color:#14213d;font-size:.9rem;line-height:1.7}
 .shirt.me .kit{box-shadow:0 0 0 2px var(--gold),0 0 22px rgba(95,178,230,.45)}
 .shirt .mine{position:absolute;top:0;right:0;font:800 10px/1.4 var(--f-body);padding:1px 7px;border-radius:999px;background:var(--gold);color:var(--on-acc)}
 .shirt.sel .kit{outline:2px dashed #fff;outline-offset:3px}
@@ -357,6 +370,7 @@ input[type=text],input[type=date],input[type=time],input[type=number],input[type
 
   <section class="card" id="formCard" aria-label="التسجيل">
     <h2 id="formTitle">البس قميصك</h2>
+    <button class="btn primary quick" id="quick" type="button" hidden></button>
     <form id="form" novalidate autocomplete="off">
       <label class="lb" for="name" id="nameLb">اسمك (اختر من القائمة أو اكتبه أول مرة)</label>
       <input type="text" id="name" list="roster" maxlength="30" placeholder="مثال: أحمد">
@@ -370,6 +384,7 @@ input[type=text],input[type=date],input[type=time],input[type=number],input[type
       </div>
       <button class="btn primary" id="submit" type="submit">علّق قميصي في الغرفة</button>
       <p class="msg" id="msg" role="status"></p>
+      <div class="suggest" id="suggest" hidden></div>
     </form>
   </section>
 
@@ -492,6 +507,24 @@ input[type=text],input[type=date],input[type=time],input[type=number],input[type
       <div class="full"><label class="lb" for="perDev">عدد الأسماء اللي يقدر يسجّلها الجوال الواحد</label>
         <select id="perDev"><option value="1">1 · اسمه فقط</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></div>
     </div>
+    <h3 class="sec">🕵️ مين سجّل؟</h3>
+    <p class="note">كل جوال له رمز ثابت من 4 خانات يظهر لك أنت فقط تحت كل اسم (📱). نفس الرمز = نفس الجوال. الرمز الأصفر = جوال سجّل أكثر من اسم.</p>
+    <div id="devSummary"></div>
+    <details class="logbox"><summary>سجل التسجيل والانسحاب لهذا الأسبوع</summary><div class="loglist" id="regLog"></div></details>
+    <h3 class="sec">🔀 دمج وتصحيح الأسماء</h3>
+    <p class="note">إذا صار لنفس اللاعب اسمين، ادمجهم: مبارياته وأهدافه وصناعته وجوائزه وصورته تنتقل كلها للاسم الصحيح.</p>
+    <div id="dupList"></div>
+    <div class="grid2" style="margin-top:10px">
+      <div><label class="lb" for="mDrop">الاسم الغلط (ينحذف)</label><select id="mDrop"></select></div>
+      <div><label class="lb" for="mKeep">الاسم الصحيح (يبقى)</label><select id="mKeep"></select></div>
+    </div>
+    <div class="row"><button class="btn ghost" id="mergeBtn" type="button">ادمج الاسمين</button></div>
+    <div class="grid2" style="margin-top:12px">
+      <div><label class="lb" for="rnSel">تغيير اسم لاعب</label><select id="rnSel"></select></div>
+      <div><label class="lb" for="rnName">الاسم الجديد</label><input type="text" id="rnName" maxlength="30" autocomplete="off"></div>
+    </div>
+    <div class="row"><button class="btn ghost" id="renameBtn" type="button">احفظ الاسم الجديد</button></div>
+    <p class="msg" id="mergeMsg" role="status"></p>
     <h3 class="sec">أسبوع جديد</h3>
     <button class="btn danger" id="newWeek" type="button" style="width:100%">بدء تمرين جديد</button>
     <div class="confirm" id="newConfirm" hidden>
@@ -561,7 +594,10 @@ function call(fn,arg){
     .then(function(r){return r.json().catch(function(){throw new Error("الخادم ما رد بشكل صحيح، حاول بعد شوي.")})},
           function(){throw new Error("ما فيه اتصال بالإنترنت أو الخادم غير متاح. تأكد من النت وحاول مرة ثانية.")})
     .then(function(j){if(j&&j.error)throw new Error(j.error);return j.data})}
-function errText(e){var m=(e&&e.message)?String(e.message):"";m=m.replace(/^(Error|Exception):\s*/,"");return m||"حدث خطأ، حاول مرة ثانية."}
+function errText(e){var m=(e&&e.message)?String(e.message):"";m=m.replace(/^(Error|Exception):\s*/,"").split("||")[0];return m||"حدث خطأ، حاول مرة ثانية."}
+var lastErr=null;
+function errSuggest(e){var m=(e&&e.message)?String(e.message):"",i=m.indexOf("||");if(i<0)return null;try{return JSON.parse(m.slice(i+2))}catch(x){return null}}
+function fmtAt(ms){if(!ms)return "";try{return new Date(ms).toLocaleString("ar-u-nu-latn",{timeZone:"Europe/Istanbul",weekday:"short",hour:"2-digit",minute:"2-digit",hour12:false})}catch(x){return new Date(ms).toISOString().slice(11,16)}}
 function now(){return Date.now()+skew}
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
 function msg(id,t,cls){var e=$(id);if(!e)return;e.textContent=t||"";e.className="msg"+(cls?" "+cls:"")}
@@ -601,8 +637,9 @@ function act(fn,arg,msgId){
   busy=true;busySince=Date.now();document.body.style.cursor="progress";
   if(msgId)msg(msgId,"جاري الحفظ…");
   var a={device:DEV,pin:PIN};for(var k in arg)a[k]=arg[k];
+  lastErr=null;
   return withTimeout(call(fn,a),30000).then(function(r){apply(r.state,a.pin);if(msgId)msg(msgId,r.msg,"ok");return r})
-    .catch(function(e){if(msgId)msg(msgId,errText(e),"err");setTimeout(refresh,500);return null})
+    .catch(function(e){lastErr=e;if(msgId)msg(msgId,errText(e),"err");if(!errSuggest(e))setTimeout(refresh,500);return null})
     .then(function(r){busy=false;document.body.style.cursor="";return r});
 }
 
@@ -639,7 +676,9 @@ function render(){
   $("nameLb").textContent=friendMode?"اسم صديقك (باقي لك "+left+(left===1?" اسم)":" أسماء)"):"اسمك (اختر من القائمة أو اكتبه أول مرة)";
   $("ruleDevice").textContent="كل جوال يقدر يسجّل حتى "+(S.perDevice||1)+(S.perDevice===1?" اسم":" أسماء")+" (اسمك وأصدقاءك)، وتقدر تعدّل الاسم أو المركز أو تنسحب قبل القفل بدون ما يتغيّر مكانك.";
   var dl=$("roster");dl.textContent="";(S.roster||[]).forEach(function(n){var o=document.createElement("option");o.value=n;dl.appendChild(o)});
-  if(!S.isAdmin&&!friendMode&&!$("name").value){var last=lsGet("tsb_name");if(last)$("name").value=last}
+  var last=lsGet("tsb_name"),lastPos=lsGet("tsb_pos")||"ANY",qk=$("quick");
+  qk.hidden=!(canForm&&!S.isAdmin&&!friendMode&&last);
+  if(!qk.hidden){qk.textContent="⚡ سجّلني: "+last+" · "+(POS[lastPos]||POS.ANY);$("nameLb").textContent="أو سجّل باسم ثاني"}
 
   drawLocker(mains,locked);
   drawBench(res,locked);
@@ -657,7 +696,7 @@ function render(){
   $("orgState").textContent=S.isAdmin?"✅ أنت داخل كمنظّم، وتقدر تعدّل كل شي في أي وقت.":(locked?"القائمة مقفلة. التعديل بعد القفل للمنظّم فقط.":"");
   $("adminTop").textContent=S.isAdmin?"أدوات المنظّم":"🔑 دخول المنظّم";
   $("adminOpen").hidden=S.isAdmin;
-  if(S.isAdmin) fillSettings();
+  if(S.isAdmin){fillSettings();fillAdminTools()}
 }
 
 var SHIRT_D="M30 4 L10 14 L2 36 L18 42 L20 34 L20 88 L76 88 L76 34 L78 42 L94 36 L86 14 L66 4 C62 12 55 16 48 16 C41 16 34 12 30 4 Z";
@@ -669,6 +708,8 @@ function kitSvg(fill,stroke,trim,dashed){
     s.appendChild(svgEl("path",{d:"M3 33 L18 39 M93 33 L78 39",stroke:trim,"stroke-width":"4"}))}
   return s;
 }
+function devCount(){var c={};(S.list||[]).forEach(function(x){if(x.dev&&!x.byAdmin)c[x.dev]=(c[x.dev]||0)+1});return c}
+function devTag(p){if(p.byAdmin)return el("span","dv","👤 المنظّم");var n=devCount()[p.dev]||0;return el("span","dv"+(n>1?" multi":""),"📱"+(p.dev||"؟")+(n>1?" ×"+n:""))}
 function canTouch(p,locked){return S.isAdmin||(p.mine&&!locked)}
 function drawLocker(mains,locked){
   var g=$("mainList"),actBox=$("mainAct");g.textContent="";actBox.textContent="";
@@ -685,6 +726,7 @@ function drawLocker(mains,locked){
     b.appendChild(el("span","nm",p?p.name:"مكان فاضي"));
     if(p)b.appendChild(el("span","ps",POS[p.pos]||POS.ANY));
     if(p&&p.mine)b.appendChild(el("span","mine",p.friend?"صديقك":"قميصك"));
+    if(p&&S.isAdmin)b.appendChild(devTag(p));
     g.appendChild(b);
     if(p&&removing===p.id)actBox.appendChild(actPanel(p,true,locked));
   })(mains[i],i+1)}
@@ -698,6 +740,7 @@ function drawBench(res,locked){
     b.appendChild(el("b",null,String(n)));
     b.appendChild(el("span",null,p?p.name:"فاضي"));
     if(p)b.appendChild(el("small",null,p.mine?(p.friend?"صديقك":"أنت"):(first?"أول من يدخل":POS[p.pos]||POS.ANY)));
+    if(p&&S.isAdmin)b.appendChild(devTag(p));
     g.appendChild(b);
     if(p&&removing===p.id)actBox.appendChild(actPanel(p,false,locked));
   })(res[i],MAIN+i+1,i===0)}
@@ -718,7 +761,7 @@ function editForm(p){
     var nm=inp.value.replace(/\s+/g," ").trim();
     if(!nm){msg("listMsg","اكتب الاسم.","err");return}
     act("updateRegistration",{reg_id:p.id,name:nm,pos:sel.value},"listMsg").then(function(r){
-      if(r){editDraft=null;if(p.mine&&!p.friend&&!S.isAdmin)lsSet("tsb_name",nm);removing=null;render()}
+      if(r){editDraft=null;if(p.mine&&!p.friend&&!S.isAdmin){lsSet("tsb_name",nm);lsSet("tsb_pos",sel.value)}removing=null;render()}
     });
   });
   f.appendChild(l1);f.appendChild(inp);f.appendChild(l2);f.appendChild(sel);f.appendChild(b);
@@ -743,6 +786,10 @@ function actPanel(p,isMain,locked){
     });
   } else {
     var editBox=el("div");editBox.hidden=true;editBox.appendChild(editForm(p));
+    var same=S.list.filter(function(x){return x.id!==p.id&&!x.byAdmin&&!p.byAdmin&&x.dev&&x.dev===p.dev}).map(function(x){return x.name});
+    var info=el("p","note",(p.byAdmin?"👤 أضافه المنظّم":"📱 جوال "+(p.dev||"؟"))+" · سجّل "+fmtAt(p.at));
+    box.appendChild(info);
+    if(same.length)box.appendChild(el("p","devwarn","⚠️ نفس الجوال سجّل كمان: "+same.join("، ")));
     box.appendChild(el("p",null,(locked?"سبب حذف ":"تعديل أو حذف ")+p.name+":"));
     add("تعديل الاسم أو المركز","ghost",function(){editBox.hidden=!editBox.hidden});
     if(!locked){
@@ -1054,10 +1101,11 @@ function drawPotm(){
       r.appendChild(el("span","pp",ptsWord(x.pts)));l.appendChild(r)});body.appendChild(l)}
   body.appendChild(el("p","note","لاعب الشهر = أكثر لاعب جمع نقاط في مباريات الشهر (نفس نقاط الترتيب). عند التساوي: الأكثر فوزاً، ثم الأهداف، ثم الصناعة."));
   copyBtnTo(body,"📋 نسخ لاعب الشهر",potmText,"potmMsg");
-  var pb=el("button","btn primary","📸 صورة لاعب الشهر");pb.type="button";pb.style.marginTop="10px";var pbox=el("div"),pm=el("p","msg");pm.id="potmImgMsg";
+  var pb=el("button","btn primary","📸 صورة لاعب الشهر");pb.type="button";pb.style.marginTop="10px";var pbox=el("div"),pm=el("p","msg");pm.id="potmImgMsg";pbox.id="potmImgBox";pbox.dataset.key="potm";
   pb.addEventListener("click",function(){buildStatsImage({key:"potm",title:"🏅 لاعب الشهر",sub:"أبطال الأشهر",hl:3,wide:2,noMedals:true,foot:"لاعب الشهر = أكثر نقاط في مباريات الشهر",cols:["","اللاعب","الشهر","النقاط"],
     rows:P.map(function(m){var w=m.winners[0];return {pid:w.player_id,name:w.name,cells:[m.final?"🏆":"🔥",m.winners.map(function(x){return x.name}).join(" و "),m.label+(m.final?"":" (جاري)"),fp(w.pts)]}})},pbox,"potmImgMsg")});
   body.appendChild(pb);body.appendChild(pbox);body.appendChild(pm);
+  var pc=statImgs.potm;if(pc&&pc.built===S.builtAt)showStatImg(pc,pbox);   // keep the preview across refreshes
 }
 function potmText(){
   var P=S.potm||[],L="━━━━━━━━━━━━━━",o=["*🏅 لاعب الشهر — تمرين السبت*",L];
@@ -1374,7 +1422,7 @@ function eventLines(sid){
 var statImgs={};
 function statsImgBtn(body,specFn){
   var spec0=specFn();if(!spec0)return;
-  var box=el("div");box.className="statimg";
+  var box=el("div");box.className="statimg";box.id="statImgBox";box.dataset.key=spec0.key;
   var b=el("button","btn primary","📸 صورة للقروب");b.type="button";b.style.marginTop="10px";
   var m=el("p","msg");m.id="statImgMsg";m.setAttribute("role","status");
   b.addEventListener("click",function(){buildStatsImage(specFn(),box,"statImgMsg")});
@@ -1428,7 +1476,7 @@ function buildStatsImage(spec,box,msgId){
     var url=c.toDataURL("image/png");
     c.toBlob(function(bl){var rec={built:S.builtAt,url:url,blob:bl,blobUrl:URL.createObjectURL(bl),name:spec.title+".png",title:spec.title};
       var old=statImgs[spec.key];if(old&&old.blobUrl)try{URL.revokeObjectURL(old.blobUrl)}catch(e){}
-      statImgs[spec.key]=rec;showStatImg(rec,box);msg(msgId,"الصورة جاهزة: «مشاركة أو حفظ» وأرسلها للقروب.","ok")});
+      statImgs[spec.key]=rec;if(!box.isConnected&&box.id){var nb=$(box.id);if(nb&&nb.dataset.key===spec.key)box=nb}showStatImg(rec,box);msg(msgId,"الصورة جاهزة: «مشاركة أو حفظ» وأرسلها للقروب.","ok")});
   }).catch(function(){msg(msgId,"ما قدرنا نجهز الصورة، حاول مرة ثانية.","err")});
 }
 
@@ -1627,6 +1675,44 @@ function copyStr(t,msgId){
   try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(function(){msg(msgId,"تم النسخ. الصقه في القروب.","ok")},legacy)}else legacy()}catch(e){legacy()}
 }
 
+function fillAdminTools(){
+  var ds=$("devSummary");ds.textContent="";
+  var groups={};(S.list||[]).forEach(function(x){if(x.dev&&!x.byAdmin)(groups[x.dev]=groups[x.dev]||[]).push(x.name)});
+  var multi=Object.keys(groups).filter(function(k){return groups[k].length>1});
+  var nAdm=(S.list||[]).filter(function(x){return x.byAdmin}).length;
+  ds.appendChild(el("p","note","الأسماء: "+(S.list||[]).length+" · الجوالات: "+Object.keys(groups).length+(nAdm?" · أضافهم المنظّم: "+nAdm:"")));
+  multi.forEach(function(k){var w=el("p","devwarn");w.appendChild(el("span","dv multi","📱"+k));w.appendChild(document.createTextNode(" سجّل "+groups[k].length+" أسماء: "+groups[k].join("، ")));ds.appendChild(w)});
+  var lg=$("regLog");lg.textContent="";
+  var RS={withdraw:"انسحب",late_withdraw:"انسحب متأخر",no_show:"غاب",excused:"اعتذر",mistake:"حُذف (خطأ إدخال)"};
+  (S.regLog||[]).forEach(function(e){var d=el("div");d.appendChild(el("time",null,fmtAt(e.t)));
+    d.appendChild(el("span",null,(e.kind==="add"?"➕ سجّل ":"➖ "+(RS[e.reason]||"حُذف")+": ")+e.name));
+    d.appendChild(el("span","dv",e.byAdmin?"👤 المنظّم":"📱"+e.dev));lg.appendChild(d)});
+  if(!(S.regLog||[]).length)lg.appendChild(el("p","note","ما فيه تسجيل بعد."));
+  var P=S.allPlayers||[],byId={};P.forEach(function(x){byId[x.id]=x});
+  var dl=$("dupList");dl.textContent="";
+  (S.dupPairs||[]).forEach(function(pr){var a=byId[pr[0]],b=byId[pr[1]];if(!a||!b)return;
+    if(b.games>a.games){var t=a;a=b;b=t}
+    var r=el("div","duprow");r.appendChild(el("b",null,"🤔 «"+a.name+"» ("+a.games+" مباراة) و «"+b.name+"» ("+b.games+" مباراة) — نفس الشخص؟"));
+    [[a,b],[b,a]].forEach(function(kd){var btn=el("button","btn ghost","ادمج في «"+kd[0].name+"»");btn.type="button";btn.addEventListener("click",armed(btn,function(){act("adminMergePlayers",{keep:kd[0].id,drop:kd[1].id},"mergeMsg")}));r.appendChild(btn)});
+    var nb=el("button","btn ghost","❌ شخصين مختلفين");nb.type="button";nb.addEventListener("click",function(){act("adminNotDuplicate",{a:a.id,b:b.id},"mergeMsg")});r.appendChild(nb);
+    dl.appendChild(r)});
+  ["mDrop","mKeep","rnSel"].forEach(function(id){var sel=$(id);if(document.activeElement===sel)return;var v=sel.value;
+    var sig=P.map(function(x){return x.id+x.name+x.games}).join("|");if(sel.dataset.sig===sig)return;sel.dataset.sig=sig;sel.textContent="";
+    var o0=document.createElement("option");o0.value="";o0.textContent="— اختر —";sel.appendChild(o0);
+    P.forEach(function(x){var o=document.createElement("option");o.value=x.id;o.textContent=x.name+" · "+x.games+" مباراة";sel.appendChild(o)});
+    sel.value=byId[v]?v:""});
+}
+// two taps for anything that can't be undone
+function armed(b,fn){var on=false;return function(){if(!on){on=true;b.dataset.label=b.textContent;b.textContent="تأكيد: "+b.textContent;
+  setTimeout(function(){on=false;if(b.dataset.label)b.textContent=b.dataset.label},5000);return}on=false;b.textContent=b.dataset.label;fn()}}
+$("mergeBtn").addEventListener("click",armed($("mergeBtn"),function(){
+  var d=$("mDrop").value,k=$("mKeep").value;
+  if(!d||!k||d===k){msg("mergeMsg","اختر الاسم الغلط والاسم الصحيح (مختلفين).","err");return}
+  act("adminMergePlayers",{keep:k,drop:d},"mergeMsg").then(function(r){if(r){$("mDrop").value="";$("mKeep").value=""}})}));
+$("renameBtn").addEventListener("click",function(){
+  var id=$("rnSel").value,n=$("rnName").value.replace(/\s+/g," ").trim();
+  if(!id||!n){msg("mergeMsg","اختر اللاعب واكتب الاسم الجديد.","err");return}
+  act("adminRenamePlayer",{player_id:id,name:n},"mergeMsg").then(function(r){if(r)$("rnName").value=""})});
 function fillSettings(){
   var pa=palette();["colA","colB"].forEach(function(id,i){var sel=$(id);if(document.activeElement===sel)return;
     if(sel.options.length!==Object.keys(pa).length){sel.textContent="";Object.keys(pa).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=pa[k].name;sel.appendChild(o)})}
@@ -1825,11 +1911,29 @@ $("form").addEventListener("submit",function(e){
   var pos=(document.querySelector('input[name=pos]:checked')||{}).value||"ANY";
   if(!name){msg("msg","اكتب اسمك أولاً.","err");return}
   $("submit").disabled=true;
-  act("register",{name:name,pos:pos},"msg").then(function(r){
-    $("submit").disabled=false;
-    if(r){if(!S.isAdmin&&S.myCount===1)lsSet("tsb_name",name);$("name").value=""}
-  });
+  doRegister(name,pos,false);
 });
+function doRegister(name,pos,confirmNew){
+  $("submit").disabled=true;$("quick").disabled=true;$("suggest").hidden=true;
+  var arg={name:name,pos:pos};if(confirmNew)arg.confirmNew=true;
+  return act("register",arg,"msg").then(function(r){
+    $("submit").disabled=false;$("quick").disabled=false;
+    if(r){if(!S.isAdmin&&S.myCount===1){lsSet("tsb_name",name);lsSet("tsb_pos",pos)}$("name").value="";return r}
+    var sg=errSuggest(lastErr);if(sg&&sg.length)showSuggest(name,pos,sg);
+    return null;
+  });
+}
+// «تقصد…؟»: pick the existing name, or confirm you are someone new
+function showSuggest(name,pos,names){
+  var box=$("suggest");box.textContent="";
+  box.appendChild(el("p",null,"فيه لاعب مسجّل قبل باسم قريب من «"+name+"». تقصد واحد من هذول؟"));
+  var row=el("div","row");
+  names.forEach(function(n){var b=el("button","btn primary","✅ أنا "+n);b.type="button";b.addEventListener("click",function(){doRegister(n,pos,false)});row.appendChild(b)});
+  var nb=el("button","btn ghost","لا، أنا شخص جديد: "+name);nb.type="button";nb.addEventListener("click",function(){doRegister(name,pos,true)});row.appendChild(nb);
+  box.appendChild(row);box.hidden=false;msg("msg","");try{box.scrollIntoView({behavior:"smooth",block:"center"})}catch(x){}
+}
+$("name").addEventListener("input",function(){$("suggest").hidden=true});
+$("quick").addEventListener("click",function(){var n=lsGet("tsb_name");if(n)doRegister(n,lsGet("tsb_pos")||"ANY",false)});
 $("setForm").addEventListener("submit",function(e){
   e.preventDefault();
   act("adminSaveSession",{data:{date:$("sDate").value,lock:$("sLock").value,start:$("sStart").value,end:$("sEnd").value,pitch:$("sPitch").value,fee:$("sFee").value,map:$("sMap").value}},"orgMsg")

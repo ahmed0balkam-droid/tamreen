@@ -4,7 +4,7 @@
   "description": "Saturday football training app — PWA + Supabase",
   "scripts": {
     "build": "node build.js",
-    "test": "node build.js && cd test && node -r ./shift.js test.js && node -r ./shift.js sim.js && node -r ./shift.js replay.js && node runcall.js && node -r ./shift.js import_test.js && node -r ./shift.js photo_check.js && node -r ./shift.js potm_check.js && node -r ./shift.js ach_check.js && node -r ./shift.js statsimg_check.js"
+    "test": "node build.js && cd test && node -r ./shift.js test.js && node -r ./shift.js sim.js && node -r ./shift.js replay.js && node runcall.js && node -r ./shift.js import_test.js && node -r ./shift.js photo_check.js && node -r ./shift.js potm_check.js && node -r ./shift.js ach_check.js && node -r ./shift.js statsimg_check.js && node -r ./shift.js dup_check.js && node -r ./shift.js dup_ui.js"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.2.17",

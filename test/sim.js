@@ -245,7 +245,7 @@ ok('new week: empty list, date +7, previous week intact, captains/overrides/bib 
 ok('week 2 sign-ups reuse players (same name → same stats), phones reset', () => {
   const t = Date.now();
   session(t + 86400e3, t + 86400e3 + 3600e3, t + 86400e3 + 7200e3);
-  P.slice(0, 14).forEach((nm, i) => G.register({ device: 'ph' + i, name: nm, pos: POS[i] }));
+  P.slice(0, 14).forEach((nm, i) => G.register({ device: 'ph' + i, name: nm, pos: POS[i], confirmNew: true })); // «البرو» ≈ «البرو الصغير» would ask «تقصد؟»
   st = G.getState({}); assert.strictEqual(st.list.length, 14); assert.ok(st.teams);
   assert.strictEqual(G.getState({}).roster.filter(x => x === P[0]).length, 1);
 });

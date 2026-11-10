@@ -80,6 +80,10 @@ async function runCall(tx, createCore, fn, arg) {
     try {
       const out = core.api[fn](arg || {});
       if (TX.writing || READ_ONLY.indexOf(fn) < 0) await flush(q, snap, TX.tables);
+      if (TX.photoMerge) {                               // a merged player's picture follows him
+        if (TX.photoMerge.move) await q('update photos set player_id = $2 where player_id = $1', [TX.photoMerge.from, TX.photoMerge.to]);
+        else await q('delete from photos where player_id = $1', [TX.photoMerge.from]);
+      }
       if (TX.photo) {                                    // picture bytes live in their own table, never loaded with the state
         if (TX.photo.remove) await q('delete from photos where player_id = $1', [TX.photo.pid]);
         else await q(`insert into photos (player_id, mime, data, updated_at) values ($1, 'image/jpeg', decode($2, 'base64'), $3)
